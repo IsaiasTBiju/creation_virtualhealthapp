@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app_session.dart';
+import '../../api_service.dart'; // <-- Added the new API Service!
 
 class SignupFlowScreen extends StatefulWidget {
   const SignupFlowScreen({super.key});
@@ -76,8 +77,6 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
     super.dispose();
   }
 
-  
-
   // ---------- COMMON UI ----------
 
   TextStyle get _titleStyle => const TextStyle(
@@ -146,25 +145,25 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
   }
 
   Widget card(Widget child) {
-  return Center(
-    child: Container(
-      width: min(MediaQuery.of(context).size.width * 0.9, 360),
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 26),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.96),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 30,
-            offset: const Offset(0, 18),
-            color: Colors.black.withOpacity(0.06),
-          ),
-        ],
+    return Center(
+      child: Container(
+        width: min(MediaQuery.of(context).size.width * 0.9, 360),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 26),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.96),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 30,
+              offset: const Offset(0, 18),
+              color: Colors.black.withOpacity(0.06),
+            ),
+          ],
+        ),
+        child: child,
       ),
-      child: child,
-    ),
-  );
-}
+    );
+  }
 
   // ---------- SPLASH ----------
 
@@ -226,190 +225,218 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
 
   Widget account() {
     return card(
-            SingleChildScrollView(
+      SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(
+                  Icons.favorite_border,
+                  color: Color(0xFFFF3CAC),
+                  size: 22,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  "Creation",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            Text("Create Account", style: _titleStyle),
+            const SizedBox(height: 6),
+            const Text(
+              "Start your wellness journey today",
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Form(
+              key: _signupFormKey,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  TextFormField(
+                    controller: name,
+                    decoration: _fieldDecoration("Full Name", hint: "Enter your name"),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return "Please enter your full name";
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: email,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: _fieldDecoration("Email Address", hint: "you@example.com"),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return "Please enter your email";
+                      }
+                      final emailRegex = RegExp(r"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+                      if (!emailRegex.hasMatch(v.trim())) {
+                        return "Please enter a valid email";
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: pass,
+                    obscureText: true,
+                    decoration: _fieldDecoration("Password", hint: "At least 6 characters"),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) {
+                        return "Please enter a password";
+                      }
+                      if (v.length < 6) {
+                        return "Password must be at least 6 characters";
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: confirm,
+                    obscureText: true,
+                    decoration: _fieldDecoration("Confirm Password", hint: "Re-enter password"),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) {
+                        return "Please confirm your password";
+                      }
+                      if (v != pass.text) {
+                        return "Passwords do not match";
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 18),
+                  Text("Account type", style: _sectionTitleStyle),
+                  const SizedBox(height: 8),
+                  _roleChoice(
+                    "Wellness member",
+                    AppSession.roleMember,
+                  ),
+                  _roleChoice(
+                    "Healthcare professional",
+                    AppSession.roleHealthcareProfessional,
+                  ),
+                  const SizedBox(height: 10),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(
-                        Icons.favorite_border,
-                        color: Color(0xFFFF3CAC),
-                        size: 22,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: acceptedTerms,
+                        onChanged: (v) {
+                          setState(() => acceptedTerms = v ?? false);
+                        },
                       ),
-                      SizedBox(width: 8),
-                      Text(
-                        "Creation",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 18,
-                          letterSpacing: 0.2,
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: RichText(
+                          text: const TextSpan(
+                            style: TextStyle(
+                              color: Color(0xFF6B7280),
+                              fontSize: 12,
+                            ),
+                            children: [
+                              TextSpan(text: "By signing up, you agree to our "),
+                              TextSpan(
+                                text: "Terms",
+                                style: TextStyle(
+                                  color: Color(0xFF4F46E5),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              TextSpan(text: " and "),
+                              TextSpan(
+                                text: "Privacy Policy",
+                                style: TextStyle(
+                                  color: Color(0xFF4F46E5),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 28),
-                  Text("Create Account", style: _titleStyle),
                   const SizedBox(height: 6),
-                  const Text(
-                    "Start your wellness journey today",
-                    style: TextStyle(
-                      color: Color(0xFF6B7280),
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Form(
-                    key: _signupFormKey,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: name,
-                          decoration: _fieldDecoration("Full Name", hint: "Enter your name"),
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) {
-                              return "Please enter your full name";
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        TextFormField(
-                          controller: email,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: _fieldDecoration("Email Address", hint: "you@example.com"),
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) {
-                              return "Please enter your email";
-                            }
-                            final emailRegex = RegExp(r"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-                            if (!emailRegex.hasMatch(v.trim())) {
-                              return "Please enter a valid email";
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        TextFormField(
-                          controller: pass,
-                          obscureText: true,
-                          decoration: _fieldDecoration("Password", hint: "At least 6 characters"),
-                          validator: (v) {
-                            if (v == null || v.isEmpty) {
-                              return "Please enter a password";
-                            }
-                            if (v.length < 6) {
-                              return "Password must be at least 6 characters";
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        TextFormField(
-                          controller: confirm,
-                          obscureText: true,
-                          decoration: _fieldDecoration("Confirm Password", hint: "Re-enter password"),
-                          validator: (v) {
-                            if (v == null || v.isEmpty) {
-                              return "Please confirm your password";
-                            }
-                            if (v != pass.text) {
-                              return "Passwords do not match";
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 18),
-                        Text("Account type", style: _sectionTitleStyle),
-                        const SizedBox(height: 8),
-                        _roleChoice(
-                          "Wellness member",
-                          AppSession.roleMember,
-                        ),
-                        _roleChoice(
-                          "Healthcare professional",
-                          AppSession.roleHealthcareProfessional,
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Checkbox(
-                              value: acceptedTerms,
-                              onChanged: (v) {
-                                setState(() => acceptedTerms = v ?? false);
-                              },
+                  
+                  // --- THE UPDATED BUTTON ---
+                  gradientButton(
+                    "Create Free Account",
+                    () async {
+                      if (_signupFormKey.currentState?.validate() ?? false) {
+                        if (!acceptedTerms) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Please accept the Terms and Privacy Policy"),
                             ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: RichText(
-                                text: const TextSpan(
-                                  style: TextStyle(
-                                    color: Color(0xFF6B7280),
-                                    fontSize: 12,
-                                  ),
-                                  children: [
-                                    TextSpan(text: "By signing up, you agree to our "),
-                                    TextSpan(
-                                      text: "Terms",
-                                      style: TextStyle(
-                                        color: Color(0xFF4F46E5),
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    TextSpan(text: " and "),
-                                    TextSpan(
-                                      text: "Privacy Policy",
-                                      style: TextStyle(
-                                        color: Color(0xFF4F46E5),
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                          );
+                          return;
+                        }
+
+                        // Show a loading snackbar
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Creating account in database...")),
+                        );
+
+                        // Call the API
+                        bool success = await ApiService.registerUser(
+                          email.text.trim(),
+                          pass.text,
+                          accountRole,
+                        );
+
+                        if (success) {
+                          // If Python says OK, move to the avatar step!
+                          setState(() => step = 1);
+                        } else {
+                          // If it fails (like email already exists), show an error
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Failed to create account. Email may already be in use."),
+                              backgroundColor: Colors.red,
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        gradientButton(
-                          "Create Free Account",
-                          () {
-                            if (_signupFormKey.currentState?.validate() ?? false) {
-                              if (!acceptedTerms) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Please accept the Terms and Privacy Policy"),
-                                  ),
-                                );
-                                return;
-                              }
-                              setState(() => step = 1);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
+                          );
+                        }
+                      }
+                    },
                   ),
-                  const SizedBox(height: 18),
-                  Center(
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, "/signin");
-                      },
-                      child: const Text(
-                        "Already have an account? Sign in",
-                        style: TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ),
+                  // --------------------------
+
                 ],
               ),
             ),
+            const SizedBox(height: 18),
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, "/signin");
+                },
+                child: const Text(
+                  "Already have an account? Sign in",
+                  style: TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -417,46 +444,46 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
 
   Widget genderStep() {
     return card(
-            SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Let's get to know you", style: _titleStyle),
-                  const SizedBox(height: 24),
-                  Text("Gender Identity", style: _sectionTitleStyle),
-                  const SizedBox(height: 8),
-                  _genderTile("Male", "male"),
-                  _genderTile("Female", "female"),
-                  _genderTile("Non-binary", "non-binary"),
-                  _genderTile("I don't want to say", "no-say"),
-                  const SizedBox(height: 24),
-                  Text("Preferred Pronouns", style: _sectionTitleStyle),
-                  const SizedBox(height: 8),
-                  _pronounChipRow(),
-                  const SizedBox(height: 28),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: SizedBox(
-                      width: 160,
-                      child: gradientButton(
-                        "Continue",
-                        () {
-                          if (gender.isEmpty || pronouns.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Please select your gender identity and pronouns"),
-                              ),
-                            );
-                            return;
-                          }
-                          setState(() => step = 2);
-                        },
-                      ),
-                    ),
-                  ),
-                ],
+      SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Let's get to know you", style: _titleStyle),
+            const SizedBox(height: 24),
+            Text("Gender Identity", style: _sectionTitleStyle),
+            const SizedBox(height: 8),
+            _genderTile("Male", "male"),
+            _genderTile("Female", "female"),
+            _genderTile("Non-binary", "non-binary"),
+            _genderTile("I don't want to say", "no-say"),
+            const SizedBox(height: 24),
+            Text("Preferred Pronouns", style: _sectionTitleStyle),
+            const SizedBox(height: 8),
+            _pronounChipRow(),
+            const SizedBox(height: 28),
+            Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: 160,
+                child: gradientButton(
+                  "Continue",
+                  () {
+                    if (gender.isEmpty || pronouns.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Please select your gender identity and pronouns"),
+                        ),
+                      );
+                      return;
+                    }
+                    setState(() => step = 2);
+                  },
+                ),
               ),
             ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -475,8 +502,7 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
                 : const Color(0xFFF3F4F6),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color:
-                  selected ? const Color(0xFF4F46E5) : Colors.transparent,
+              color: selected ? const Color(0xFF4F46E5) : Colors.transparent,
               width: 1.5,
             ),
           ),
@@ -555,93 +581,93 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
 
   Widget avatarStep() {
     return card(
-            SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Create Your Avatar", style: _titleStyle),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: SizedBox(
-                      height: 170,
-                      width: 170,
-                      child: _avatarPreview(),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildOptionSection(
-                    "Hair Style",
-                    [
-                      "Short",
-                      "Long",
-                      "Curly",
-                      "Bald",
-                      "Ponytail",
-                      "Buzz Cut",
-                      "Wavy",
-                      "Afro",
-                      "Mohawk",
-                      "Bob",
-                    ],
-                    hairStyle,
-                    (v) => setState(() => hairStyle = v),
-                  ),
-                  _buildOptionSection(
-                    "Hair Color",
-                    [
-                      "Black",
-                      "Brown",
-                      "Blonde",
-                      "Red",
-                      "Auburn",
-                      "Gray",
-                      "White",
-                      "Blue",
-                      "Pink",
-                      "Purple",
-                    ],
-                    hairColor,
-                    (v) => setState(() => hairColor = v),
-                  ),
-                  _buildOptionSection(
-                    "Eye Color",
-                    [
-                      "Brown",
-                      "Blue",
-                      "Green",
-                      "Hazel",
-                      "Gray",
-                      "Amber",
-                    ],
-                    eyeColor,
-                    (v) => setState(() => eyeColor = v),
-                  ),
-                  _buildOptionSection(
-                    "Face Shape",
-                    [
-                      "Oval",
-                      "Round",
-                      "Square",
-                      "Heart",
-                      "Diamond",
-                    ],
-                    faceShape,
-                    (v) => setState(() => faceShape = v),
-                  ),
-                  const SizedBox(height: 28),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: SizedBox(
-                      width: 160,
-                      child: gradientButton(
-                        "Continue",
-                        () => setState(() => step = 3),
-                      ),
-                    ),
-                  ),
-                ],
+      SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Create Your Avatar", style: _titleStyle),
+            const SizedBox(height: 20),
+            Center(
+              child: SizedBox(
+                height: 170,
+                width: 170,
+                child: _avatarPreview(),
               ),
             ),
+            const SizedBox(height: 24),
+            _buildOptionSection(
+              "Hair Style",
+              [
+                "Short",
+                "Long",
+                "Curly",
+                "Bald",
+                "Ponytail",
+                "Buzz Cut",
+                "Wavy",
+                "Afro",
+                "Mohawk",
+                "Bob",
+              ],
+              hairStyle,
+              (v) => setState(() => hairStyle = v),
+            ),
+            _buildOptionSection(
+              "Hair Color",
+              [
+                "Black",
+                "Brown",
+                "Blonde",
+                "Red",
+                "Auburn",
+                "Gray",
+                "White",
+                "Blue",
+                "Pink",
+                "Purple",
+              ],
+              hairColor,
+              (v) => setState(() => hairColor = v),
+            ),
+            _buildOptionSection(
+              "Eye Color",
+              [
+                "Brown",
+                "Blue",
+                "Green",
+                "Hazel",
+                "Gray",
+                "Amber",
+              ],
+              eyeColor,
+              (v) => setState(() => eyeColor = v),
+            ),
+            _buildOptionSection(
+              "Face Shape",
+              [
+                "Oval",
+                "Round",
+                "Square",
+                "Heart",
+                "Diamond",
+              ],
+              faceShape,
+              (v) => setState(() => faceShape = v),
+            ),
+            const SizedBox(height: 28),
+            Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: 160,
+                child: gradientButton(
+                  "Continue",
+                  () => setState(() => step = 3),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -735,16 +761,13 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Hair will be replaced in Chunk 3 with _HairPainter
           Positioned.fill(
             child: CustomPaint(
               painter: _HairPainter(hairStyle, _hairColorToColor()),
             ),
           ),
-
           Positioned(top: 72, left: 55, child: _eye(_eyeColorToColor())),
           Positioned(top: 72, right: 55, child: _eye(_eyeColorToColor())),
-
           Positioned(
             bottom: 40,
             left: 70,
@@ -787,133 +810,155 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
   // ---------- STEP 3: AGE ----------
 
   Widget ageStep() {
-  return Center(
-          child: Container(
-            width: min(MediaQuery.of(context).size.width * 0.9, 360),
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 26),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.96),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  blurRadius: 30,
-                  offset: const Offset(0, 18),
-                  color: Colors.black.withOpacity(0.06),
-                ),
-              ],
+    return Center(
+      child: Container(
+        width: min(MediaQuery.of(context).size.width * 0.9, 360),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 26),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.96),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 30,
+              offset: const Offset(0, 18),
+              color: Colors.black.withOpacity(0.06),
             ),
-            child: Form(
-              key: _ageFormKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("How old are you?", style: _titleStyle.copyWith(fontSize: 20)),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: age,
-                    keyboardType: TextInputType.number,
-                    decoration: _fieldDecoration("Age", hint: "Enter your age"),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) return "Please enter your age";
-                      final parsed = int.tryParse(v.trim());
-                      if (parsed == null || parsed <= 0 || parsed > 120) return "Please enter a valid age";
-                      return null;
+          ],
+        ),
+        child: Form(
+          key: _ageFormKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("How old are you?", style: _titleStyle.copyWith(fontSize: 20)),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: age,
+                keyboardType: TextInputType.number,
+                decoration: _fieldDecoration("Age", hint: "Enter your age"),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return "Please enter your age";
+                  final parsed = int.tryParse(v.trim());
+                  if (parsed == null || parsed <= 0 || parsed > 120) return "Please enter a valid age";
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(
+                  width: 140,
+                  child: gradientButton(
+                    "Continue",
+                    () {
+                      if (_ageFormKey.currentState?.validate() ?? false) {
+                        setState(() => step = 4);
+                      }
                     },
                   ),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: SizedBox(
-                      width: 140,
-                      child: gradientButton(
-                        "Continue",
-                        () {
-                          if (_ageFormKey.currentState?.validate() ?? false) {
-                            setState(() => step = 4);
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-  );
-}
+        ),
+      ),
+    );
+  }
 
   // ---------- STEP 4: ACCESSIBILITY ----------
 
   Widget accessibility() {
-  return Center(
-          child: Container(
-            width: min(MediaQuery.of(context).size.width * 0.9, 360),
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 26),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.96),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  blurRadius: 30,
-                  offset: const Offset(0, 18),
-                  color: Colors.black.withOpacity(0.06),
-                ),
-              ],
+    return Center(
+      child: Container(
+        width: min(MediaQuery.of(context).size.width * 0.9, 360),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 26),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.96),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 30,
+              offset: const Offset(0, 18),
+              color: Colors.black.withOpacity(0.06),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Accessibility Settings", style: _titleStyle.copyWith(fontSize: 20)),
-                const SizedBox(height: 8),
-                const Text(
-                  "Are you color blind?",
-                  style: TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
-                ),
-                const SizedBox(height: 6),
-                RadioListTile<bool>(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text("No", style: TextStyle(fontSize: 14)),
-                  value: false,
-                  groupValue: colorBlind,
-                  activeColor: const Color(0xFF4F46E5),
-                  onChanged: (v) => setState(() => colorBlind = v ?? false),
-                ),
-                RadioListTile<bool>(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text("Yes", style: TextStyle(fontSize: 14)),
-                  value: true,
-                  groupValue: colorBlind,
-                  activeColor: const Color(0xFF4F46E5),
-                  onChanged: (v) => setState(() => colorBlind = v ?? true),
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: SizedBox(
-                    width: 180,
-                    child: gradientButton(
-                      "Continue to Dashboard",
-                      () async {
-                        await AppSession.saveAfterOnboarding(
-                          email: email.text.trim(),
-                          displayName: name.text.trim(),
-                          role: accountRole,
-                        );
-                        if (!mounted) return;
-                        final dest =
-                            AppSession.homeRouteForRole(accountRole);
-                        Navigator.pushReplacementNamed(context, dest);
-                      },
-                    ),
-                  ),
-                ),
-              ],
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Accessibility Settings", style: _titleStyle.copyWith(fontSize: 20)),
+            const SizedBox(height: 8),
+            const Text(
+              "Are you color blind?",
+              style: TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
             ),
-          ),
-  );
-}
+            const SizedBox(height: 6),
+            RadioListTile<bool>(
+              contentPadding: EdgeInsets.zero,
+              title: const Text("No", style: TextStyle(fontSize: 14)),
+              value: false,
+              groupValue: colorBlind,
+              activeColor: const Color(0xFF4F46E5),
+              onChanged: (v) => setState(() => colorBlind = v ?? false),
+            ),
+            RadioListTile<bool>(
+              contentPadding: EdgeInsets.zero,
+              title: const Text("Yes", style: TextStyle(fontSize: 14)),
+              value: true,
+              groupValue: colorBlind,
+              activeColor: const Color(0xFF4F46E5),
+              onChanged: (v) => setState(() => colorBlind = v ?? true),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: 180,
+                child: gradientButton(
+                          "Continue to Dashboard",
+                          () async {
+                            // Show loading indicator
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Saving profile securely...")),
+                            );
+
+                            // 1. Silently log the user in to get their JWT token
+                            String? token = await ApiService.loginUser(
+                                email.text.trim(), 
+                                pass.text
+                            );
+
+                            // 2. If login worked, save all the profile data we gathered!
+                            if (token != null) {
+                                await ApiService.createProfile(
+                                    token: token,
+                                    fullName: name.text.trim(),
+                                    age: int.tryParse(age.text.trim()) ?? 0,
+                                    gender: gender,
+                                );
+                            }
+
+                            // 3. Save local session so the app remembers we are logged in
+                            await AppSession.saveAfterOnboarding(
+                              email: email.text.trim(),
+                              displayName: name.text.trim(),
+                              role: accountRole,
+                            );
+                            
+                            if (!mounted) return;
+                            final dest = AppSession.homeRouteForRole(accountRole);
+                     Navigator.pushReplacementNamed(context, dest);
+                   },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1033,57 +1078,37 @@ class _HairPainter extends CustomPainter {
     final h = size.height;
 
     switch (style) {
-      // ---------------- SHORT ----------------
       case "Short":
         _drawShortHair(canvas, paint, w, h);
         break;
-
-      // ---------------- LONG ----------------
       case "Long":
         _drawLongHair(canvas, paint, w, h);
         break;
-
-      // ---------------- CURLY ----------------
       case "Curly":
         _drawCurlyHair(canvas, paint, w, h);
         break;
-
-      // ---------------- WAVY ----------------
       case "Wavy":
         _drawWavyHair(canvas, paint, w, h);
         break;
-
-      // ---------------- AFRO ----------------
       case "Afro":
         _drawAfro(canvas, paint, w, h);
         break;
-
-      // ---------------- MOHAWK ----------------
       case "Mohawk":
         _drawMohawk(canvas, paint, w, h);
         break;
-
-      // ---------------- BUZZ CUT ----------------
       case "Buzz Cut":
         _drawBuzzCut(canvas, paint, w, h);
         break;
-
-      // ---------------- PONYTAIL ----------------
       case "Ponytail":
         _drawPonytail(canvas, paint, w, h);
         break;
-
-      // ---------------- BOB ----------------
       case "Bob":
         _drawBob(canvas, paint, w, h);
         break;
-
       default:
         _drawShortHair(canvas, paint, w, h);
     }
   }
-
-  // ---------- HAIR SHAPE METHODS ----------
 
   void _drawShortHair(Canvas canvas, Paint paint, double w, double h) {
     final path = Path()
@@ -1093,7 +1118,6 @@ class _HairPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.5, h * 0.30, w * 0.2, h * 0.45)
       ..quadraticBezierTo(w * 0.15, h * 0.35, w * 0.2, h * 0.25)
       ..close();
-
     canvas.drawPath(path, paint);
   }
 
@@ -1105,7 +1129,6 @@ class _HairPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.5, h * 0.95, w * 0.25, h * 0.90)
       ..quadraticBezierTo(w * 0.05, h * 0.55, w * 0.2, h * 0.20)
       ..close();
-
     canvas.drawPath(path, paint);
   }
 
@@ -1126,23 +1149,10 @@ class _HairPainter extends CustomPainter {
     final path = Path()
       ..moveTo(w * 0.2, h * 0.25)
       ..quadraticBezierTo(w * 0.5, h * 0.05, w * 0.8, h * 0.25)
-      ..cubicTo(
-        w * 0.9, h * 0.45,
-        w * 0.6, h * 0.55,
-        w * 0.8, h * 0.75,
-      )
-      ..cubicTo(
-        w * 0.6, h * 0.85,
-        w * 0.4, h * 0.85,
-        w * 0.2, h * 0.75,
-      )
-      ..cubicTo(
-        w * 0.4, h * 0.55,
-        w * 0.1, h * 0.45,
-        w * 0.2, h * 0.25,
-      )
+      ..cubicTo(w * 0.9, h * 0.45, w * 0.6, h * 0.55, w * 0.8, h * 0.75)
+      ..cubicTo(w * 0.6, h * 0.85, w * 0.4, h * 0.85, w * 0.2, h * 0.75)
+      ..cubicTo(w * 0.4, h * 0.55, w * 0.1, h * 0.45, w * 0.2, h * 0.25)
       ..close();
-
     canvas.drawPath(path, paint);
   }
 
@@ -1164,7 +1174,6 @@ class _HairPainter extends CustomPainter {
       ..lineTo(w * 0.60, h * 0.45)
       ..lineTo(w * 0.40, h * 0.45)
       ..close();
-
     canvas.drawPath(path, paint);
   }
 
@@ -1183,10 +1192,7 @@ class _HairPainter extends CustomPainter {
   }
 
   void _drawPonytail(Canvas canvas, Paint paint, double w, double h) {
-    // Head hair
     _drawLongHair(canvas, paint, w, h * 0.6);
-
-    // Tail
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(w * 0.5, h * 0.85),
@@ -1205,7 +1211,6 @@ class _HairPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.5, h * 0.85, w * 0.2, h * 0.75)
       ..quadraticBezierTo(w * 0.1, h * 0.55, w * 0.2, h * 0.25)
       ..close();
-
     canvas.drawPath(path, paint);
   }
 

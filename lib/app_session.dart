@@ -10,9 +10,9 @@ class AppSession {
   static const String keyOnboardingComplete = 'onboardingComplete';
 
   /// Wellness app user vs healthcare professional (U-FR-1-1) vs admin (S-FR-5).
-  static const String roleMember = 'member';
-  static const String roleHealthcareProfessional = 'healthcare_professional';
-  static const String roleAdmin = 'admin';
+static const String roleMember = 'User';
+  static const String roleHealthcareProfessional = 'Healthcare Professional';
+  static const String roleAdmin = 'Admin';
 
   static String homeRouteForRole(String? role) {
     switch (role) {
