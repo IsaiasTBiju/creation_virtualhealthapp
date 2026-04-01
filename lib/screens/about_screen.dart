@@ -317,18 +317,50 @@ class TeamSection extends StatelessWidget {
           SizedBox(height: 60),
           Wrap(
             spacing: 40,
+            runSpacing: 40,       
+            alignment: WrapAlignment.center, 
             children: [
               TeamCard(
-                "Dr. Sarah Chen",
-                "Chief Medical Officer",
-                "Harvard Medical School graduate with 15 years in preventive medicine.",
+                "Isaias Thomas Biju",
+                "Project Lead & Scrum Master",
+                "Aspiring software engineer with a passion for health tech and agile methodologies.",
                 [Color(0xFFFF5FA2), Color(0xFFFF8A00)],
               ),
               TeamCard(
-                "Alex Rivera",
-                "Head of Product",
+                "Ali Khosroshahi",
+                "Coding Lead and Backend Architect",
                 "Former Google PM passionate about inclusive design and accessibility.",
                 [Color(0xFF6A5CFF), Color(0xFF5F9CFF)],
+              ),
+              TeamCard(
+                "Jordan Kim",
+                "Lead Engineer",
+                "Full-stack engineer committed to building secure, scalable health tech.",
+                [Color(0xFF00C9A7), Color(0xFF007CF0)],
+              ),
+              TeamCard(
+                "Jordan Kim",
+                "Lead Engineer",
+                "Full-stack engineer committed to building secure, scalable health tech.",
+                [Color(0xFF00C9A7), Color(0xFF007CF0)],
+              ),
+              TeamCard(
+                "Jordan Kim",
+                "Lead Engineer",
+                "Full-stack engineer committed to building secure, scalable health tech.",
+                [Color(0xFF00C9A7), Color(0xFF007CF0)],
+              ),
+              TeamCard(
+                "Jordan Kim",
+                "Lead Engineer",
+                "Full-stack engineer committed to building secure, scalable health tech.",
+                [Color(0xFF00C9A7), Color(0xFF007CF0)],
+              ),
+              TeamCard(
+                "Jordan Kim",
+                "Lead Engineer",
+                "Full-stack engineer committed to building secure, scalable health tech.",
+                [Color(0xFF00C9A7), Color(0xFF007CF0)],
               ),
               TeamCard(
                 "Jordan Kim",
@@ -563,7 +595,7 @@ class Footer extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                "© 2024 Origin Inc. All rights reserved.",
+                "© 2026 Origin Inc. All rights reserved.",
                 style: TextStyle(color: Colors.white54),
               ),
 

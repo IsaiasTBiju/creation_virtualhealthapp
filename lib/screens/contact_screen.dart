@@ -569,7 +569,7 @@ class Footer extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                "© 2024 Origin Inc. All rights reserved.",
+                "© 2026 Origin Inc. All rights reserved.",
                 style: TextStyle(color: Colors.white54),
               ),
 

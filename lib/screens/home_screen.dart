@@ -589,21 +589,21 @@ class TestimonialsSection extends StatelessWidget {
                   TestimonialCard(
                     quote:
                         "Creation has completely transformed how I approach my health.",
-                    name: "Alex Johnson",
-                    role: "Fitness Enthusiast",
+                    name: "Prof. Abrar Ullah",
+                    role: "Professor for F29SO",
                     width: cardWidth,
                   ),
                   TestimonialCard(
                     quote:
-                        "Finally, a wellness app that respects my pronouns and makes me feel seen.",
-                    name: "Sam Rivera",
-                    role: "Busy Professional",
+                        "Finally, a wellness app that guides me and makes me feel seen.",
+                    name: "Prof. Hani Ragab",
+                    role: "Line Manager for Dubai Group 2",
                     width: cardWidth,
                   ),
                   TestimonialCard(
                     quote: "I recommend Creation to all my clients.",
-                    name: "Jordan Lee",
-                    role: "Health Coach",
+                    name: "Prof. Ali Muzaffar",
+                    role: "Group Project Coordinator for F29SO",
                     width: cardWidth,
                   ),
                 ],
@@ -794,7 +794,7 @@ class Footer extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "© 2024 Origin Inc. All rights reserved.",
+                      "© 2026 Origin Inc. All rights reserved.",
                       style: TextStyle(color: Colors.white54),
                     ),
                     const SizedBox(height: 20),
@@ -815,7 +815,7 @@ class Footer extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      "© 2024 Origin Inc. All rights reserved.",
+                      "© 2026 Origin Inc. All rights reserved.",
                       style: TextStyle(color: Colors.white54),
                     ),
                     Row(
