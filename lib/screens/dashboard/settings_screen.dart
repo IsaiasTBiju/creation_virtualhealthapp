@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../app_preferences.dart';
 import '../../app_session.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final AppPreferences appPrefs;
+  const SettingsScreen({super.key, required this.appPrefs});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -21,6 +23,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _highContrast = false;
   double _textScale = 1.0;
   bool _colorBlindMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _highContrast = widget.appPrefs.highContrast;
+    _textScale = widget.appPrefs.textScale;
+    _colorBlindMode = widget.appPrefs.colorBlindMode;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,13 +102,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   "High contrast",
                   "Stronger borders and text",
                   _highContrast,
-                  (v) => setState(() => _highContrast = v),
+                  (v) async {
+                    setState(() => _highContrast = v);
+                    await widget.appPrefs.setHighContrast(v);
+                  },
                 ),
                 _toggleTile(
                   "Colour-blind friendly palette",
                   "Adjusts charts and status colours",
                   _colorBlindMode,
-                  (v) => setState(() => _colorBlindMode = v),
+                  (v) async {
+                    setState(() => _colorBlindMode = v);
+                    await widget.appPrefs.setColorBlindMode(v);
+                  },
                 ),
                 _sliderTile(),
               ],
@@ -323,10 +339,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           child: Slider(
             min: 0.85,
-            max: 1.25,
-            divisions: 8,
+            max: 1.35,
+            divisions: 10,
             value: _textScale,
-            onChanged: (v) => setState(() => _textScale = v),
+            onChanged: (v) async {
+              setState(() => _textScale = v);
+              await widget.appPrefs.setTextScale(v);
+            },
           ),
         ),
         Text(

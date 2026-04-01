@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../../app_preferences.dart';
+import 'appointments_screen.dart';
+import 'chatbot_screen.dart';
 import 'dashboard_screen.dart';
 import 'fitness_screen.dart';
 import 'nutrition.dart';
 import 'medication.dart';
 import 'biometrics.dart';
+import 'messages_screen.dart';
 import 'wellness_screen.dart';
 import 'social_hub_screen.dart';
 import 'achievements_screen.dart';
@@ -16,10 +20,12 @@ import 'settings_screen.dart';
 
 class DashboardShell extends StatefulWidget {
   final FlutterLocalNotificationsPlugin notificationsPlugin;
+  final AppPreferences appPrefs;
 
   const DashboardShell({
     super.key,
     required this.notificationsPlugin,
+    required this.appPrefs,
   });
 
   @override
@@ -74,6 +80,15 @@ class _DashboardShellState extends State<DashboardShell> {
 
   // BIOMETRICS
   List<BiometricEntry> biometricEntries = [];
+  List<AppointmentItem> appointments = [
+    AppointmentItem(
+      id: 1,
+      title: "Routine Checkup",
+      provider: "Dr. Morgan",
+      startsAt: DateTime.now().add(const Duration(days: 2, hours: 2)),
+      status: "scheduled",
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +101,7 @@ class _DashboardShellState extends State<DashboardShell> {
   todayWater: todayWater,
   medications: medications,
   biometrics: biometricEntries,
+  onOpenAppointments: () => setState(() => selectedIndex = 6),
 ),
 
 
@@ -169,12 +185,25 @@ class _DashboardShellState extends State<DashboardShell> {
         },
       ),
 
+      AppointmentsScreen(
+        appointments: appointments,
+        onCreate: (appt) => setState(() => appointments.add(appt)),
+        onUpdateStatus: (id, status) {
+          setState(() {
+            final i = appointments.indexWhere((a) => a.id == id);
+            if (i != -1) appointments[i] = appointments[i].copyWith(status: status);
+          });
+        },
+        onDelete: (id) => setState(() => appointments.removeWhere((a) => a.id == id)),
+      ),
+      const ChatbotScreen(),
+      const MessagesScreen(),
       const SocialHubScreen(),
       const AchievementsScreen(),
       const JournalScreen(),
       const BrainGamesScreen(),
       const ProfileScreen(),
-      const SettingsScreen(),
+      SettingsScreen(appPrefs: widget.appPrefs),
     ];
 
     return Scaffold(
@@ -218,12 +247,15 @@ class _DashboardShellState extends State<DashboardShell> {
                         _navItem(Icons.restaurant, "Nutrition", 3),
                         _navItem(Icons.medication, "Medications", 4),
                         _navItem(Icons.monitor_heart, "Biometrics", 5),
-                        _navItem(Icons.people, "Social Hub", 6),
-                        _navItem(Icons.emoji_events, "Achievements", 7),
-                        _navItem(Icons.book, "Journal", 8),
-                        _navItem(Icons.videogame_asset, "Brain Games", 9),
-                        _navItem(Icons.person, "Profile", 10),
-                        _navItem(Icons.settings, "Settings", 11),
+                        _navItem(Icons.calendar_month, "Appointments", 6),
+                        _navItem(Icons.smart_toy_outlined, "AI Companion", 7),
+                        _navItem(Icons.chat_bubble_outline, "Messages", 8),
+                        _navItem(Icons.people, "Social Hub", 9),
+                        _navItem(Icons.emoji_events, "Achievements", 10),
+                        _navItem(Icons.book, "Journal", 11),
+                        _navItem(Icons.videogame_asset, "Brain Games", 12),
+                        _navItem(Icons.person, "Profile", 13),
+                        _navItem(Icons.settings, "Settings", 14),
                       ],
                     ),
                   ),

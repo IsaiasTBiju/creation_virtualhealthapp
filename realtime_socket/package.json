@@ -1,0 +1,11 @@
+{
+  "name": "creation-local-realtime",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1"
+  }
+}

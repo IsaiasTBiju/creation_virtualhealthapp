@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../app_preferences.dart';
 import '../../app_session.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final AppPreferences? appPrefs;
+  const LoginScreen({super.key, this.appPrefs});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -62,9 +64,20 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               Align(
                 alignment: Alignment.centerLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.pop(context),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Spacer(),
+                    if (widget.appPrefs != null)
+                      TextButton.icon(
+                        onPressed: _openAccessibilityQuickSettings,
+                        icon: const Icon(Icons.accessibility_new),
+                        label: const Text('Accessibility'),
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(height: 60),
@@ -432,6 +445,70 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _openAccessibilityQuickSettings() {
+    final prefs = widget.appPrefs;
+    if (prefs == null) return;
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Accessibility quick settings',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    title: const Text('High contrast'),
+                    value: prefs.highContrast,
+                    onChanged: (v) async {
+                      await prefs.setHighContrast(v);
+                      setLocal(() {});
+                    },
+                  ),
+                  SwitchListTile(
+                    title: const Text('Color-blind palette'),
+                    value: prefs.colorBlindMode,
+                    onChanged: (v) async {
+                      await prefs.setColorBlindMode(v);
+                      setLocal(() {});
+                    },
+                  ),
+                  Row(
+                    children: [
+                      const Text('Text size'),
+                      Expanded(
+                        child: Slider(
+                          min: 0.85,
+                          max: 1.35,
+                          divisions: 10,
+                          value: prefs.textScale,
+                          onChanged: (v) async {
+                            await prefs.setTextScale(v);
+                            setLocal(() {});
+                          },
+                        ),
+                      ),
+                      Text('${(prefs.textScale * 100).round()}%'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

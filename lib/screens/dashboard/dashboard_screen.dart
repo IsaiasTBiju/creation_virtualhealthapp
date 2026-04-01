@@ -14,6 +14,7 @@ class DashboardScreen extends StatelessWidget {
   final int todayWater;
   final List<MedicationEntry> medications;
   final List<BiometricEntry> biometrics;
+  final VoidCallback onOpenAppointments;
 
   const DashboardScreen({
     super.key,
@@ -24,6 +25,7 @@ class DashboardScreen extends StatelessWidget {
     required this.todayWater,
     required this.medications,
     required this.biometrics,
+    required this.onOpenAppointments,
   });
 
   @override
@@ -56,25 +58,36 @@ class DashboardScreen extends StatelessWidget {
 
   // HEADER
   Widget _header() {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text(
-          "Welcome back!",
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF111827),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Welcome back!",
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                "Here's your wellness summary:",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
           ),
         ),
-        SizedBox(height: 6),
-        Text(
-          "Here's your wellness summary:",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF6B7280),
-          ),
+        FilledButton.icon(
+          onPressed: onOpenAppointments,
+          icon: const Icon(Icons.calendar_month_outlined),
+          label: const Text('Book Appointment'),
         ),
       ],
     );

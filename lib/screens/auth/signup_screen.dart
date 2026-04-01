@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app_session.dart';
-import '../../api_service.dart'; // <-- Added the new API Service!
 
 class SignupFlowScreen extends StatefulWidget {
   const SignupFlowScreen({super.key});
@@ -376,7 +375,7 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
                   // --- THE UPDATED BUTTON ---
                   gradientButton(
                     "Create Free Account",
-                    () async {
+                    () {
                       if (_signupFormKey.currentState?.validate() ?? false) {
                         if (!acceptedTerms) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -386,31 +385,7 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
                           );
                           return;
                         }
-
-                        // Show a loading snackbar
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Creating account in database...")),
-                        );
-
-                        // Call the API
-                        bool success = await ApiService.registerUser(
-                          email.text.trim(),
-                          pass.text,
-                          accountRole,
-                        );
-
-                        if (success) {
-                          // If Python says OK, move to the avatar step!
-                          setState(() => step = 1);
-                        } else {
-                          // If it fails (like email already exists), show an error
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Failed to create account. Email may already be in use."),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
+                        setState(() => step = 1);
                       }
                     },
                   ),
@@ -919,33 +894,13 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
                 child: gradientButton(
                           "Continue to Dashboard",
                           () async {
-                            // Show loading indicator
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Saving profile securely...")),
-                            );
-
-                            // 1. Silently log the user in to get their JWT token
-                            String? token = await ApiService.loginUser(
-                                email.text.trim(), 
-                                pass.text
-                            );
-
-                            // 2. If login worked, save all the profile data we gathered!
-                            if (token != null) {
-                                await ApiService.createProfile(
-                                    token: token,
-                                    fullName: name.text.trim(),
-                                    age: int.tryParse(age.text.trim()) ?? 0,
-                                    gender: gender,
-                                );
-                            }
-
-                            // 3. Save local session so the app remembers we are logged in
                             await AppSession.saveAfterOnboarding(
                               email: email.text.trim(),
                               displayName: name.text.trim(),
                               role: accountRole,
                             );
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.setBool('pref_color_blind', colorBlind);
                             
                             if (!mounted) return;
                             final dest = AppSession.homeRouteForRole(accountRole);
