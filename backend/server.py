@@ -39,13 +39,15 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 @app.post("/register", response_model=api_shapes.UserResponse)
 def register_user(user_data: api_shapes.UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(sql_tables.User).filter(sql_tables.User.email == user_data.email).first()
+    clean_email = user_data.email.strip().lower()
+    
+    db_user = db.query(sql_tables.User).filter(sql_tables.User.email == clean_email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
     hashed_pw = auth_tools.hash_password(user_data.password)
     new_user = sql_tables.User(
-        email=user_data.email, 
+        email=clean_email, 
         password_hash=hashed_pw, 
         role=user_data.role
     )
@@ -57,7 +59,6 @@ def register_user(user_data: api_shapes.UserCreate, db: Session = Depends(get_db
         return new_user
     except Exception as e:
         db.rollback()
-        # ---> NEW LINE TO REVEAL THE EXACT ERROR IN YOUR TERMINAL <---
         print(f"\n\n🚨 CRASH REASON 🚨: {str(e)}\n\n") 
         raise HTTPException(status_code=500, detail=str(e))
 

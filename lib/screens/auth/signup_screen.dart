@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app_session.dart';
+import '../../api_service.dart'; // <-- ADDED THE API SERVICE IMPORT
 
 class SignupFlowScreen extends StatefulWidget {
   const SignupFlowScreen({super.key});
@@ -112,29 +113,38 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
     );
   }
 
-  Widget gradientButton(String text, VoidCallback onTap, {bool enabled = true}) {
-    return InkWell(
-      onTap: enabled ? onTap : null,
-      child: Opacity(
-        opacity: enabled ? 1 : 0.5,
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            gradient: const LinearGradient(
-              colors: [
-                Color(0xFFFF4D79),
-                Color(0xFFFF7A18),
-              ],
+ Widget gradientButton(String text, VoidCallback onTap, {bool enabled = true}) {
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.5,
+      child: Material(
+        color: Colors.transparent, 
+        elevation: enabled ? 4 : 0, 
+        shadowColor: const Color(0xFFFF4D79).withOpacity(0.5), 
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          borderRadius: BorderRadius.circular(14),
+          splashColor: Colors.white.withOpacity(0.3), 
+          highlightColor: Colors.white.withOpacity(0.1),
+          child: Ink( 
+            height: 52,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFFF4D79),
+                  Color(0xFFFF7A18),
+                ],
+              ),
             ),
-          ),
-          child: Center(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
+            child: Center(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
               ),
             ),
           ),
@@ -372,7 +382,7 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
                   ),
                   const SizedBox(height: 6),
                   
-                  // --- THE UPDATED BUTTON ---
+                  // --- GO TO NEXT STEP (NO DB SAVE YET) ---
                   gradientButton(
                     "Create Free Account",
                     () {
@@ -462,54 +472,52 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
     );
   }
 
-  Widget _roleChoice(String label, String value) {
+Widget _roleChoice(String label, String value) {
     final selected = accountRole == value;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: InkWell(
-        onTap: () => setState(() => accountRole = value),
+      // 1. Move the solid color to the Material wrapper
+      child: Material(
+        color: selected ? const Color(0xFFEEF2FF) : const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: selected
-                ? const Color(0xFFEEF2FF)
-                : const Color(0xFFF3F4F6),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: selected ? const Color(0xFF4F46E5) : Colors.transparent,
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                selected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_off,
-                color: selected
-                    ? const Color(0xFF4F46E5)
-                    : const Color(0xFF9CA3AF),
-                size: 20,
+        child: InkWell(
+          onTap: () => setState(() => accountRole = value),
+          borderRadius: BorderRadius.circular(10),
+          // 2. The container inside now only handles padding and borders (no solid colors!)
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected ? const Color(0xFF4F46E5) : Colors.transparent,
+                width: 1.5,
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF111827),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                  color: selected ? const Color(0xFF4F46E5) : const Color(0xFF9CA3AF),
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF111827),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-
   Widget _genderTile(String label, String value) {
     return RadioListTile<String>(
       contentPadding: EdgeInsets.zero,
@@ -891,22 +899,66 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
               alignment: Alignment.centerRight,
               child: SizedBox(
                 width: 180,
-                child: gradientButton(
-                          "Continue to Dashboard",
-                          () async {
-                            await AppSession.saveAfterOnboarding(
-                              email: email.text.trim(),
-                              displayName: name.text.trim(),
-                              role: accountRole,
-                            );
-                            final prefs = await SharedPreferences.getInstance();
-                            await prefs.setBool('pref_color_blind', colorBlind);
-                            
-                            if (!mounted) return;
-                            final dest = AppSession.homeRouteForRole(accountRole);
-                     Navigator.pushReplacementNamed(context, dest);
-                   },
-                ),
+                child: 
+                  // --- THE FULL DB SAVING BUTTON ---
+                  gradientButton(
+                    "Continue to Dashboard",
+                    () async {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Creating your account...")),
+                      );
+
+                      final emailText = email.text.trim();
+                      final passText = pass.text;
+                      final nameText = name.text.trim();
+
+                      // 1. FIRST: Create the account in PostgreSQL!
+                      bool isRegistered = await ApiService.registerUser(
+                          emailText, 
+                          passText, 
+                          accountRole 
+                      );
+
+                      // If the email is taken or backend crashes, stop them right here!
+                      if (!isRegistered) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Failed to create account! Email might be taken."),
+                                backgroundColor: Colors.red,
+                              ),
+                          );
+                          return; 
+                      }
+
+                      // 2. SECOND: Log them in silently to get the JWT token
+                      String? token = await ApiService.loginUser(emailText, passText);
+
+                      // 3. THIRD: Save all their profile data!
+                      if (token != null) {
+                          await ApiService.createProfile(
+                              token: token,
+                              fullName: nameText,
+                              age: int.tryParse(age.text.trim()) ?? 0,
+                              gender: gender,
+                          );
+                      }
+
+                      // 4. Save local session so the app remembers they are logged in
+                      await AppSession.saveAfterOnboarding(
+                        email: emailText,
+                        displayName: nameText,
+                        role: accountRole,
+                      );
+                      
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool('pref_color_blind', colorBlind);
+                      
+                      if (!mounted) return;
+                      final dest = AppSession.homeRouteForRole(accountRole);
+                      Navigator.pushReplacementNamed(context, dest);
+                    },
+                  ),
+                  // --------------------------
               ),
             ),
           ],

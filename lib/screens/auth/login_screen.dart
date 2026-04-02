@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../../api_service.dart';
 import '../../app_preferences.dart';
 import '../../app_session.dart';
 
@@ -40,18 +40,37 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _signIn() async {
+Future<void> _signIn() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    
     setState(() => _loading = true);
-    await AppSession.saveSignIn(
-      email: _email.text.trim(),
-      role: _role,
-      rememberEmail: _remember,
-    );
+    
+    final emailText = _email.text.trim();
+    final passText = _password.text;
+
+
+    String? token = await ApiService.loginUser(emailText, passText);
+
     if (!mounted) return;
     setState(() => _loading = false);
-    final dest = AppSession.homeRouteForRole(_role);
-    Navigator.pushNamedAndRemoveUntil(context, dest, (r) => false);
+
+    if (token != null) {
+      await AppSession.saveSignIn(
+        email: emailText,
+        role: _role,
+        rememberEmail: _remember,
+      );
+      
+      final dest = AppSession.homeRouteForRole(_role);
+      Navigator.pushNamedAndRemoveUntil(context, dest, (r) => false);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Invalid email or password!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override

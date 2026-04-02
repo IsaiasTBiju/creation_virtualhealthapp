@@ -3,33 +3,46 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // Use 127.0.0.1 for web/Chrome. If using an Android Emulator later, change to 10.0.2.2
   static const String baseUrl = "http://127.0.0.1:8000";
 
   
+// --- REGISTER USER ---
   static Future<bool> registerUser(String email, String password, String role) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/register'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: jsonEncode({
           'email': email,
           'password': password,
-          'role': role,
+          'role': role, 
         }),
       );
-      return response.statusCode == 200;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true; 
+      } else {
+        print(" Registration Blocked: ${response.body}");
+        return false;
+      }
     } catch (e) {
-      print("Registration Error: $e");
+      print(" Registration Exception: $e");
       return false;
     }
   }
 
   
-  static Future<String?> loginUser(String email, String password) async {
+static Future<String?> loginUser(String email, String password) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/login'),
+        // 1. Tell Python this is an old-school form, NOT JSON
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        // 2. Do NOT use jsonEncode here! Pass it as a raw Map.
+        // 3. You MUST use the exact key 'username', even though it is an email!
         body: {
           'username': email,
           'password': password,
@@ -38,17 +51,14 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final token = data['access_token'];
-        
-        
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('jwt_token', token);
-        
-        return token;
+        // Extract the token and optionally save it to SharedPreferences if needed
+        return data['access_token'];
+      } else {
+        print("Login Error: ${response.body}");
+        return null;
       }
-      return null;
     } catch (e) {
-      print("Login Error: $e");
+      print("Login Exception: $e");
       return null;
     }
   }
