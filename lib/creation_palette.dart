@@ -1,9 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'app_preferences.dart';
 
 /// Original purple brand colours when [colorBlind] is false; blue-forward ramp when true.
 class CreationPalette {
   final bool colorBlind;
   const CreationPalette({required this.colorBlind});
+
+  // --- NEW STATIC CONSTANTS & HELPERS ---
+  
+  /// High-contrast blue for color-blind users
+  static const Color cbBlue = Color(0xFF005AB5); 
+
+  /// Logic to find out if color blind mode is on from anywhere in the app
+  static bool isColorBlind(BuildContext context) {
+    return Provider.of<AppPreferences>(context, listen: false).colorBlindMode;
+  }
+
+  /// Returns the brand purple or color-blind blue based on current context
+  static Color mainPurple(BuildContext context) {
+    return isColorBlind(context) ? cbBlue : const Color(0xFF6C2CF3);
+  }
+  // --------------------------------------
 
   Color get sidebarBrandTitle =>
       colorBlind ? const Color(0xFF005A9C) : Colors.purple;

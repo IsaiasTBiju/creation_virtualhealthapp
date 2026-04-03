@@ -37,6 +37,19 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     
     return user
 
+
+@app.get("/check-email")
+def check_email(email: str, db: Session = Depends(get_db)):
+    clean_email = email.strip().lower()
+    # Check if a user with this email already exists
+    db_user = db.query(sql_tables.User).filter(sql_tables.User.email == clean_email).first()
+    
+    if db_user:
+        return {"available": False} # Email is taken!
+        
+    return {"available": True} # Email is free!
+
+
 @app.post("/register", response_model=api_shapes.UserResponse)
 def register_user(user_data: api_shapes.UserCreate, db: Session = Depends(get_db)):
     clean_email = user_data.email.strip().lower()
@@ -59,7 +72,7 @@ def register_user(user_data: api_shapes.UserCreate, db: Session = Depends(get_db
         return new_user
     except Exception as e:
         db.rollback()
-        print(f"\n\n🚨 CRASH REASON 🚨: {str(e)}\n\n") 
+        print(f"\n\n CRASH REASON : {str(e)}\n\n") 
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/login")

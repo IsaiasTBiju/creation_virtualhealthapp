@@ -1,209 +1,220 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
-
 import '../../creation_palette.dart';
-
-class ChatMessage {
-  final String from;
-  final String body;
-  final DateTime at;
-  ChatMessage(this.from, this.body, this.at);
-}
+import '../../app_session.dart'; // To get your logged-in name
 
 class MessagesScreen extends StatefulWidget {
-  final CreationPalette palette;
-
-  const MessagesScreen({super.key, required this.palette});
+  const MessagesScreen({super.key});
 
   @override
   State<MessagesScreen> createState() => _MessagesScreenState();
 }
 
 class _MessagesScreenState extends State<MessagesScreen> {
-  final serverCtrl = TextEditingController(text: 'http://127.0.0.1:3001');
-  final selfCtrl = TextEditingController(text: 'user-web');
-  final peerCtrl = TextEditingController(text: 'user-android');
-  final roomCtrl = TextEditingController(text: 'creation-demo-room');
-  final textCtrl = TextEditingController();
+  late io.Socket socket;
+  final TextEditingController _msgController = TextEditingController();
+  final List<Map<String, String>> _messages = [];
+  String myName = "Me"; // Default
 
-  io.Socket? socket;
-  bool connected = false;
-  String status = 'Disconnected';
-  final List<ChatMessage> messages = [];
-  StreamSubscription? ticker;
+  @override
+  void initState() {
+    super.initState();
+    _loadMyName();
+    _initSocket();
+  }
+
+  // Automatically get your name from the session
+  Future<void> _loadMyName() async {
+    final name = await AppSession.displayName();
+    if (name != null && name.isNotEmpty) {
+      setState(() {
+        myName = name;
+      });
+    }
+  }
+
+  void _initSocket() {
+    // Change this to your server IP if testing on a physical device
+    socket = io.io('http://localhost:3001', <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': false,
+    });
+
+    socket.connect();
+
+    socket.on('receive_message', (data) {
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            'sender': data['sender']?.toString() ?? 'Unknown',
+            'text': data['text']?.toString() ?? '',
+          });
+        });
+      }
+    });
+  }
+
+  void _sendMessage() {
+    if (_msgController.text.trim().isNotEmpty) {
+      final msgData = {
+        'sender': myName,
+        'text': _msgController.text.trim(),
+      };
+      socket.emit('send_message', msgData);
+      setState(() {
+        _messages.add(msgData);
+      });
+      _msgController.clear();
+    }
+  }
 
   @override
   void dispose() {
-    ticker?.cancel();
-    socket?.dispose();
-    serverCtrl.dispose();
-    selfCtrl.dispose();
-    peerCtrl.dispose();
-    roomCtrl.dispose();
-    textCtrl.dispose();
+    socket.dispose();
+    _msgController.dispose();
     super.dispose();
-  }
-
-  void connectSocket() {
-    socket?.dispose();
-    final s = io.io(
-      serverCtrl.text.trim(),
-      io.OptionBuilder().setTransports(['websocket']).disableAutoConnect().build(),
-    );
-    s.onConnect((_) {
-      if (!mounted) return;
-      setState(() {
-        connected = true;
-        status = 'Connected';
-      });
-      s.emit('join_room', {'room': roomCtrl.text.trim(), 'userId': selfCtrl.text.trim()});
-    });
-    s.onDisconnect((_) {
-      if (!mounted) return;
-      setState(() {
-        connected = false;
-        status = 'Disconnected';
-      });
-    });
-    s.onConnectError((e) {
-      if (!mounted) return;
-      setState(() => status = 'Error: $e');
-    });
-    s.on('private_message', (data) {
-      if (!mounted || data is! Map) return;
-      final body = data['body']?.toString() ?? '';
-      final from = data['from']?.toString() ?? 'peer';
-      if (body.isEmpty) return;
-      setState(() => messages.add(ChatMessage(from, body, DateTime.now())));
-    });
-    s.connect();
-    socket = s;
-    ticker?.cancel();
-    ticker = Stream.periodic(const Duration(seconds: 3)).listen((_) {
-      socket?.emit('presence_ping', {'userId': selfCtrl.text.trim()});
-    });
-  }
-
-  void sendMsg() {
-    final body = textCtrl.text.trim();
-    if (body.isEmpty) return;
-    socket?.emit('private_message', {
-      'room': roomCtrl.text.trim(),
-      'from': selfCtrl.text.trim(),
-      'to': peerCtrl.text.trim(),
-      'body': body,
-      'timestamp': DateTime.now().toIso8601String(),
-    });
-    // Do not append locally: the server broadcasts to the room (including you),
-    // so private_message already adds one row for the sender.
-    setState(() => textCtrl.clear());
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFF3F3F3),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Real-time Messages', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
-          const Text(
-            'Socket one-to-one chat. Use same room/server on web and emulator.',
-            style: TextStyle(color: Color(0xFF6B7280)),
-          ),
-          const SizedBox(height: 14),
-          _connectionBox(),
-          const SizedBox(height: 14),
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-              child: Column(children: [
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(14),
-                    itemCount: messages.length,
-                    itemBuilder: (ctx, i) {
-                      final m = messages[i];
-                      final mine = m.from == selfCtrl.text.trim();
-                      final p = widget.palette;
-                      return Align(
-                        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: mine ? p.chatBubbleUser : const Color(0xFFF3F4F6),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            m.body,
-                            style: TextStyle(
-                              color: mine
-                                  ? CreationPalette.chatBubbleUserForeground
-                                  : const Color(0xFF111827),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+    final colorBlind = CreationPalette.isColorBlind(context);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F4F6),
+      appBar: AppBar(
+        title: const Text("Community Chat", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 1,
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          // CLEANED TOP AREA: Just shows your identity status
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            color: colorBlind ? CreationPalette.cbBlue.withOpacity(0.1) : Colors.purple.withOpacity(0.05),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 12,
+                  backgroundColor: colorBlind ? CreationPalette.cbBlue : Colors.purple,
+                  child: const Icon(Icons.person, size: 14, color: Colors.white),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFE5E7EB)))),
-                  child: Row(children: [
-                    Expanded(
-                      child: TextField(
-                        controller: textCtrl,
-                        onSubmitted: (_) => sendMsg(),
-                        decoration: const InputDecoration(
-                          hintText: 'Type a message...',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(onPressed: connected ? sendMsg : null, child: const Text('Send')),
-                  ]),
-                ),
-              ]),
+                const SizedBox(width: 8),
+                Text("Chatting as: $myName", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              ],
             ),
           ),
-        ]),
+          
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final m = _messages[index];
+                bool isMe = m['sender'] == myName;
+
+                return _buildChatBubble(m['sender']!, m['text']!, isMe, colorBlind);
+              },
+            ),
+          ),
+          
+          _buildInputArea(colorBlind),
+        ],
       ),
     );
   }
 
-  Widget _connectionBox() => Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-        child: Column(children: [
-          Row(children: [
-            Expanded(
-              child: TextField(
-                controller: serverCtrl,
-                decoration: const InputDecoration(labelText: 'Socket server URL'),
-              ),
+  Widget _buildChatBubble(String sender, String text, bool isMe, bool cb) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          // NAME TAG ON TOP
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4, left: 4, right: 4),
+            child: Text(
+              isMe ? "You" : sender,
+              style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.bold),
             ),
-            const SizedBox(width: 8),
-            FilledButton(onPressed: connectSocket, child: const Text('Connect')),
-          ]),
-          const SizedBox(height: 8),
-          Row(children: [
-            Expanded(child: TextField(controller: selfCtrl, decoration: const InputDecoration(labelText: 'Your ID'))),
-            const SizedBox(width: 8),
-            Expanded(child: TextField(controller: peerCtrl, decoration: const InputDecoration(labelText: 'Peer ID'))),
-            const SizedBox(width: 8),
-            Expanded(child: TextField(controller: roomCtrl, decoration: const InputDecoration(labelText: 'Room'))),
-          ]),
-          const SizedBox(height: 6),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text('Status: $status', style: const TextStyle(color: Color(0xFF6B7280))),
           ),
-        ]),
-      );
+          Row(
+            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (!isMe) _userIcon(sender, cb), // Show icon for others
+              const SizedBox(width: 8),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isMe 
+                      ? (cb ? CreationPalette.cbBlue : Colors.purple) 
+                      : Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(isMe ? 16 : 0),
+                      bottomRight: Radius.circular(isMe ? 0 : 16),
+                    ),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))
+                    ],
+                  ),
+                  child: Text(
+                    text,
+                    style: TextStyle(color: isMe ? Colors.white : Colors.black87, fontSize: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (isMe) _userIcon("Me", cb), // Show icon for me
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _userIcon(String name, bool cb) {
+    return CircleAvatar(
+      radius: 14,
+      backgroundColor: cb ? CreationPalette.cbBlue.withOpacity(0.2) : Colors.purple.withOpacity(0.2),
+      child: Text(
+        name[0].toUpperCase(),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: cb ? CreationPalette.cbBlue : Colors.purple),
+      ),
+    );
+  }
+
+  Widget _buildInputArea(bool cb) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Color(0xFFE5E7EB)))),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _msgController,
+              decoration: InputDecoration(
+                hintText: "Type a message...",
+                filled: true,
+                fillColor: const Color(0xFFF3F4F6),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              onSubmitted: (_) => _sendMessage(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: _sendMessage,
+            icon: Icon(Icons.send, color: cb ? CreationPalette.cbBlue : Colors.purple),
+          ),
+        ],
+      ),
+    );
+  }
 }

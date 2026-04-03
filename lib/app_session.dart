@@ -10,7 +10,7 @@ class AppSession {
   static const String keyOnboardingComplete = 'onboardingComplete';
 
   /// Wellness app user vs healthcare professional (U-FR-1-1) vs admin (S-FR-5).
-static const String roleMember = 'User';
+  static const String roleMember = 'User';
   static const String roleHealthcareProfessional = 'Healthcare Professional';
   static const String roleAdmin = 'Admin';
 
@@ -70,4 +70,11 @@ static const String roleMember = 'User';
     final p = await SharedPreferences.getInstance();
     return p.getString(keyRememberEmail);
   }
+
+  // --- ADDED THIS FOR THE CHAT SCREEN ---
+  static Future<String?> displayName() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(keyDisplayName);
+  }
+  // --------------------------------------
 }

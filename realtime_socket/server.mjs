@@ -4,8 +4,11 @@ import { Server } from 'socket.io';
 const port = Number(process.env.PORT || 3001);
 
 const httpServer = createServer();
-const io = new Server(httpServer, {
-  cors: { origin: '*' },
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
 });
 
 io.on('connection', (socket) => {

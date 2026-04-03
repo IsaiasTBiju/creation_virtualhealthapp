@@ -125,7 +125,7 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
     );
   }
 
- Widget gradientButton(String text, VoidCallback onTap, {bool enabled = true}) {
+  Widget gradientButton(String text, VoidCallback onTap, {bool enabled = true}) {
     return Opacity(
       opacity: enabled ? 1.0 : 0.5,
       child: Material(
@@ -394,10 +394,10 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
                   ),
                   const SizedBox(height: 6),
                   
-                  // --- GO TO NEXT STEP (NO DB SAVE YET) ---
+                  // --- GO TO NEXT STEP (WITH DB CHECK) ---
                   gradientButton(
                     "Create Free Account",
-                    () {
+                    () async { 
                       if (_signupFormKey.currentState?.validate() ?? false) {
                         if (!acceptedTerms) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -407,6 +407,30 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
                           );
                           return;
                         }
+
+                        // Show a quick loading message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Checking availability...")),
+                        );
+
+                        // Ask Python if the email is free!
+                        bool available = await ApiService.isEmailAvailable(email.text.trim());
+                        
+                        if (!mounted) return;
+
+                        // If it's taken, show red error and STOP!
+                        if (!available) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("This email is already in use!"),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return; 
+                        }
+
+                        // If it's free, clear the snackbar and go to Step 1 (Gender)!
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
                         setState(() => step = 1);
                       }
                     },
@@ -484,7 +508,7 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
     );
   }
 
-Widget _roleChoice(String label, String value) {
+  Widget _roleChoice(String label, String value) {
     final selected = accountRole == value;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -530,6 +554,7 @@ Widget _roleChoice(String label, String value) {
       ),
     );
   }
+
   Widget _genderTile(String label, String value) {
     return RadioListTile<String>(
       contentPadding: EdgeInsets.zero,

@@ -32,7 +32,21 @@ class ApiService {
     }
   }
 
-  
+  static Future<bool> isEmailAvailable(String email) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/check-email?email=$email'));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['available'] == true;
+      }
+      return false; 
+    } catch (e) {
+      print("Check Email Exception: $e");
+      return false;
+    }
+  }
+
 static Future<String?> loginUser(String email, String password) async {
     try {
       final response = await http.post(
@@ -97,9 +111,4 @@ static Future<String?> loginUser(String email, String password) async {
       return false;
     }
   }
-
-
-
-
-  
 }
