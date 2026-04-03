@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../creation_palette.dart';
+
 class BadgeItem {
   final String title;
   final String description;
@@ -16,10 +18,8 @@ class BadgeItem {
   });
 }
 
-class AchievementsScreen extends StatelessWidget {
-  const AchievementsScreen({super.key});
-
-  static final List<BadgeItem> _badges = [
+List<BadgeItem> _badgesFor(CreationPalette p) {
+  return [
     BadgeItem(
       title: "First Steps",
       description: "Complete your first workout",
@@ -39,7 +39,7 @@ class AchievementsScreen extends StatelessWidget {
       description: "Log mindfulness 5 times",
       icon: Icons.self_improvement,
       unlocked: true,
-      accent: const Color(0xFF8B5CF6),
+      accent: p.accentViolet,
     ),
     BadgeItem(
       title: "Streak Master",
@@ -63,10 +63,17 @@ class AchievementsScreen extends StatelessWidget {
       accent: const Color(0xFF10B981),
     ),
   ];
+}
+
+class AchievementsScreen extends StatelessWidget {
+  final CreationPalette palette;
+
+  const AchievementsScreen({super.key, required this.palette});
 
   @override
   Widget build(BuildContext context) {
-    final unlockedCount = _badges.where((b) => b.unlocked).length;
+    final badges = _badgesFor(palette);
+    final unlockedCount = badges.where((b) => b.unlocked).length;
 
     return Container(
       color: const Color.fromARGB(255, 243, 243, 243),
@@ -77,11 +84,11 @@ class AchievementsScreen extends StatelessWidget {
           children: [
             _header(),
             const SizedBox(height: 28),
-            _summaryRow(unlockedCount),
+            _summaryRow(unlockedCount, badges),
             const SizedBox(height: 28),
             _weeklyChallenge(),
             const SizedBox(height: 28),
-            _badgesGrid(),
+            _badgesGrid(badges),
           ],
         ),
       ),
@@ -113,7 +120,7 @@ class AchievementsScreen extends StatelessWidget {
     );
   }
 
-  Widget _summaryRow(int unlocked) {
+  Widget _summaryRow(int unlocked, List<BadgeItem> badges) {
     return Row(
       children: [
         Expanded(
@@ -141,11 +148,11 @@ class AchievementsScreen extends StatelessWidget {
         Expanded(
           child: _statCard(
             "Badges earned",
-            "$unlocked / ${_badges.length}",
+            "$unlocked / ${badges.length}",
             "Collect them all",
             Icons.workspace_premium,
-            const Color(0xFFF3E8FF),
-            const Color(0xFF9333EA),
+            palette.summaryIconBackground,
+            palette.accentDeepPurple,
           ),
         ),
       ],
@@ -226,14 +233,12 @@ class AchievementsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6C2CF3), Color(0xFFA855F7)],
-        ),
+        gradient: LinearGradient(colors: palette.brandGradientShort),
         boxShadow: [
           BoxShadow(
             blurRadius: 20,
             offset: const Offset(0, 10),
-            color: const Color(0xFF6C2CF3).withOpacity(0.35),
+            color: palette.brandGlowShadow,
           ),
         ],
       ),
@@ -290,7 +295,7 @@ class AchievementsScreen extends StatelessWidget {
     );
   }
 
-  Widget _badgesGrid() {
+  Widget _badgesGrid(List<BadgeItem> badges) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -329,8 +334,8 @@ class AchievementsScreen extends StatelessWidget {
                   crossAxisSpacing: 16,
                   childAspectRatio: 1.15,
                 ),
-                itemCount: _badges.length,
-                itemBuilder: (context, i) => _badgeTile(_badges[i]),
+                itemCount: badges.length,
+                itemBuilder: (context, i) => _badgeTile(badges[i]),
               );
             },
           ),

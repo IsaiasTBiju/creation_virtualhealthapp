@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
+import '../../creation_palette.dart';
+
 class ChatMessage {
   final String from;
   final String body;
@@ -11,7 +13,9 @@ class ChatMessage {
 }
 
 class MessagesScreen extends StatefulWidget {
-  const MessagesScreen({super.key});
+  final CreationPalette palette;
+
+  const MessagesScreen({super.key, required this.palette});
 
   @override
   State<MessagesScreen> createState() => _MessagesScreenState();
@@ -121,21 +125,26 @@ class _MessagesScreenState extends State<MessagesScreen> {
                   child: ListView.builder(
                     padding: const EdgeInsets.all(14),
                     itemCount: messages.length,
-                    itemBuilder: (_, i) {
+                    itemBuilder: (ctx, i) {
                       final m = messages[i];
                       final mine = m.from == selfCtrl.text.trim();
+                      final p = widget.palette;
                       return Align(
                         alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 10),
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: mine ? const Color(0xFF6C2CF3) : const Color(0xFFF3F4F6),
+                            color: mine ? p.chatBubbleUser : const Color(0xFFF3F4F6),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             m.body,
-                            style: TextStyle(color: mine ? Colors.white : const Color(0xFF111827)),
+                            style: TextStyle(
+                              color: mine
+                                  ? CreationPalette.chatBubbleUserForeground
+                                  : const Color(0xFF111827),
+                            ),
                           ),
                         ),
                       );

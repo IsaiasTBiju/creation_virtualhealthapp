@@ -3,11 +3,14 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../app_preferences.dart';
 import '../../app_session.dart';
 import '../../api_service.dart'; // <-- ADDED THE API SERVICE IMPORT
 
 class SignupFlowScreen extends StatefulWidget {
-  const SignupFlowScreen({super.key});
+  final AppPreferences appPrefs;
+
+  const SignupFlowScreen({super.key, required this.appPrefs});
 
   @override
   State<SignupFlowScreen> createState() => _SignupFlowScreenState();
@@ -41,9 +44,18 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
   @override
   void initState() {
     super.initState();
+    _hydrateColorBlindPreference();
     Timer(const Duration(seconds: 2), () {
       if (!mounted) return;
       checkOnboardingStatus();
+    });
+  }
+
+  Future<void> _hydrateColorBlindPreference() async {
+    final p = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      colorBlind = p.getBool(AppPreferences.storageKeyColorBlind) ?? false;
     });
   }
 
@@ -950,9 +962,8 @@ Widget _roleChoice(String label, String value) {
                         role: accountRole,
                       );
                       
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setBool('pref_color_blind', colorBlind);
-                      
+                      await widget.appPrefs.setColorBlindMode(colorBlind);
+
                       if (!mounted) return;
                       final dest = AppSession.homeRouteForRole(accountRole);
                       Navigator.pushReplacementNamed(context, dest);

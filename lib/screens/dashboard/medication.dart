@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import '../../creation_palette.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 class MedicationEntry {
@@ -39,6 +41,7 @@ class MedicationEntry {
 }
 
 class MedicationScreen extends StatefulWidget {
+  final CreationPalette palette;
   final List<MedicationEntry> medications;
 
   final void Function(MedicationEntry med) onAddMedication;
@@ -49,6 +52,7 @@ class MedicationScreen extends StatefulWidget {
 
   const MedicationScreen({
     super.key,
+    required this.palette,
     required this.medications,
     required this.onAddMedication,
     required this.onToggleReminder,
@@ -214,7 +218,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
       ),
       child: Row(
         children: [
-          Icon(Icons.medication, color: Colors.purple.shade400),
+          Icon(Icons.medication, color: widget.palette.workoutRowIcon),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../creation_palette.dart';
 // Bring in the model types you already use in other screens
 import 'wellness_screen.dart';   // WellnessDay
 import 'nutrition.dart';        // MealEntry
@@ -15,9 +16,11 @@ class DashboardScreen extends StatelessWidget {
   final List<MedicationEntry> medications;
   final List<BiometricEntry> biometrics;
   final VoidCallback onOpenAppointments;
+  final CreationPalette palette;
 
   const DashboardScreen({
     super.key,
+    required this.palette,
     required this.workouts,
     required this.wellnessDays,
     required this.todayMeals,
@@ -39,13 +42,13 @@ class DashboardScreen extends StatelessWidget {
           children: [
             _header(),
             const SizedBox(height: 28),
-            _dailyHealthScore(),
+            _dailyHealthScore(palette),
             const SizedBox(height: 28),
-            _todaySummary(),
+            _todaySummary(palette),
             const SizedBox(height: 28),
             _latestBiometrics(),
             const SizedBox(height: 28),
-            _recentWorkouts(),
+            _recentWorkouts(palette),
             const SizedBox(height: 28),
             _recentMeals(),
             const SizedBox(height: 28),
@@ -94,17 +97,16 @@ class DashboardScreen extends StatelessWidget {
   }
 
   // HEALTH SCORE
-  Widget _dailyHealthScore() {
+  Widget _dailyHealthScore(CreationPalette palette) {
     final score = _calculateHealthScore();
+    final g = palette.healthScoreGradient;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6C2CF3), Color(0xFFA855F7), Color(0xFFC084FC)],
-        ),
+        gradient: LinearGradient(colors: g),
         boxShadow: const [
           BoxShadow(
             color: Colors.black26,
@@ -139,8 +141,8 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   _scoreLabel(score),
-                  style: const TextStyle(
-                    color: Color(0xFFBBF7D0),
+                  style: TextStyle(
+                    color: palette.healthScoreSubtitle,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -155,9 +157,9 @@ class DashboardScreen extends StatelessWidget {
               color: Colors.white24,
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.emoji_events,
-              color: Colors.yellow,
+              color: palette.healthScoreTrophy,
               size: 50,
             ),
           ),
@@ -167,7 +169,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   // TODAY SUMMARY GRID
-  Widget _todaySummary() {
+  Widget _todaySummary(CreationPalette palette) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -193,18 +195,21 @@ class DashboardScreen extends StatelessWidget {
               childAspectRatio: 3.5,
               children: [
                 _summaryCard(
+                  palette: palette,
                   icon: Icons.local_fire_department,
                   title: "Calories",
                   value: "$todayCalories kcal",
                   subtitle: "${todayMeals.length} meals logged",
                 ),
                 _summaryCard(
+                  palette: palette,
                   icon: Icons.water_drop,
                   title: "Water Intake",
                   value: "$todayWater glasses",
                   subtitle: "Goal: 8 glasses",
                 ),
                 _summaryCard(
+                  palette: palette,
                   icon: Icons.favorite,
                   title: "Workouts",
                   value: "${workouts.length}",
@@ -219,6 +224,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _summaryCard({
+    required CreationPalette palette,
     required IconData icon,
     required String title,
     required String value,
@@ -243,10 +249,10 @@ class DashboardScreen extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFFF3E8FF),
+              color: palette.summaryIconBackground,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: const Color(0xFF6C2CF3)),
+            child: Icon(icon, color: palette.summaryIconForeground),
           ),
           const SizedBox(width: 12),
           Column(
@@ -350,7 +356,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   // RECENT WORKOUTS
-  Widget _recentWorkouts() {
+  Widget _recentWorkouts(CreationPalette palette) {
     if (workouts.isEmpty) return const SizedBox();
 
     return Container(
@@ -381,7 +387,7 @@ class DashboardScreen extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.fitness_center,
-                      color: Colors.purple.shade400,
+                      color: palette.workoutRowIcon,
                     ),
                     const SizedBox(width: 12),
                     Expanded(

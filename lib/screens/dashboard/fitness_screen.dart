@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../creation_palette.dart';
+
 class FitnessScreen extends StatefulWidget {
+  final CreationPalette palette;
   final List<Map<String, dynamic>> workouts;
   final Function(Map<String, dynamic>) onAddWorkout;
 
   const FitnessScreen({
     super.key,
+    required this.palette,
     required this.workouts,
     required this.onAddWorkout,
   });
@@ -194,7 +198,7 @@ Widget build(BuildContext context) {
       ),
       child: Row(
         children: [
-          Icon(Icons.fitness_center, color: Colors.purple.shade400),
+          Icon(Icons.fitness_center, color: widget.palette.workoutRowIcon),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

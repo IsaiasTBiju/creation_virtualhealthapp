@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../creation_palette.dart';
+
 class LeaderboardRow {
   final int rank;
   final String name;
@@ -33,7 +35,9 @@ class FriendItem {
 }
 
 class SocialHubScreen extends StatefulWidget {
-  const SocialHubScreen({super.key});
+  final CreationPalette palette;
+
+  const SocialHubScreen({super.key, required this.palette});
 
   @override
   State<SocialHubScreen> createState() => _SocialHubScreenState();
@@ -130,7 +134,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: Colors.purple.shade400),
+          Icon(icon, size: 18, color: widget.palette.socialPillIcon),
           const SizedBox(width: 8),
           Text(
             label,
@@ -183,12 +187,12 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: highlight
-            ? const Color(0xFFF3E8FF)
+            ? widget.palette.socialLeaderboardRowHighlightBg
             : const Color(0xFFF8F9FB),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: highlight
-              ? const Color(0xFFC084FC).withOpacity(0.5)
+              ? widget.palette.socialLeaderboardBorderHighlight
               : Colors.transparent,
         ),
       ),
@@ -202,7 +206,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                 fontWeight: FontWeight.w700,
                 fontSize: 15,
                 color: highlight
-                    ? const Color(0xFF7C3AED)
+                    ? widget.palette.socialLeaderboardRankHighlight
                     : const Color(0xFF111827),
               ),
             ),
@@ -214,7 +218,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                 fontWeight: FontWeight.w600,
                 fontSize: 15,
                 color: highlight
-                    ? const Color(0xFF5B21B6)
+                    ? widget.palette.socialLeaderboardNameHighlight
                     : const Color(0xFF111827),
               ),
             ),
@@ -256,11 +260,11 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
               child: Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: const Color(0xFFE9D5FF),
+                    backgroundColor: widget.palette.socialAvatarBackground,
                     child: Text(
                       f.name.isNotEmpty ? f.name[0].toUpperCase() : "?",
-                      style: const TextStyle(
-                        color: Color(0xFF6B21A8),
+                      style: TextStyle(
+                        color: widget.palette.socialAvatarLetter,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

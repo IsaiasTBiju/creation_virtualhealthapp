@@ -55,7 +55,7 @@ class _MyAppState extends State<MyApp> {
           '/contact': (context) => const ContactScreen(),
           '/signin': (context) => LoginScreen(appPrefs: appPrefs),
           '/admin-login': (context) => const AdminLoginScreen(),
-          '/signup': (context) => const SignupFlowScreen(),
+          '/signup': (context) => SignupFlowScreen(appPrefs: appPrefs),
           '/dashboard': (context) => DashboardShell(
                 notificationsPlugin: widget.notificationsPlugin,
                 appPrefs: appPrefs,

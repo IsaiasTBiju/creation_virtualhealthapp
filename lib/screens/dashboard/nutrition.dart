@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../creation_palette.dart';
+
 class MealEntry {
   final String type; // Breakfast, Lunch, Dinner, Snack
   final String time;
@@ -15,6 +17,7 @@ class MealEntry {
 }
 
 class NutritionScreen extends StatefulWidget {
+  final CreationPalette palette;
   final int dailyCalorieGoal;
   final int dailyWaterGoal;
 
@@ -30,6 +33,7 @@ class NutritionScreen extends StatefulWidget {
 
   const NutritionScreen({
     super.key,
+    required this.palette,
     required this.dailyCalorieGoal,
     required this.dailyWaterGoal,
     required this.todayCalories,
@@ -214,7 +218,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
           LinearProgressIndicator(
             value: progress.clamp(0, 1),
             backgroundColor: const Color(0xFFE5E7EB),
-            color: const Color(0xFF6C2CF3),
+            color: widget.palette.progressBrand,
             minHeight: 10,
           ),
 
@@ -338,7 +342,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
       ),
       child: Row(
         children: [
-          Icon(Icons.restaurant, color: Colors.purple.shade400),
+          Icon(Icons.restaurant, color: widget.palette.workoutRowIcon),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

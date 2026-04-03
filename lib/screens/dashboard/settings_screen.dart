@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_preferences.dart';
 import '../../app_session.dart';
+import '../../creation_palette.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppPreferences appPrefs;
@@ -44,28 +45,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _header(),
             const SizedBox(height: 28),
             _section(
+              context,
               "Notifications",
               Icons.notifications_outlined,
               [
                 _toggleTile(
+                  context,
                   "Push notifications",
                   "Reminders for goals and social activity",
                   _pushNotifications,
                   (v) => setState(() => _pushNotifications = v),
                 ),
                 _toggleTile(
+                  context,
                   "Weekly email digest",
                   "Summary of your wellness trends",
                   _emailDigest,
                   (v) => setState(() => _emailDigest = v),
                 ),
                 _toggleTile(
+                  context,
                   "Appointment alerts",
                   "Before upcoming bookings",
                   _appointmentAlerts,
                   (v) => setState(() => _appointmentAlerts = v),
                 ),
                 _toggleTile(
+                  context,
                   "Medication reminders",
                   "Synced with Medications tab",
                   _medicationAlerts,
@@ -75,6 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
             _section(
+              context,
               "Privacy",
               Icons.lock_outline,
               [
@@ -86,6 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   (v) => setState(() => _profileVisibility = v),
                 ),
                 _toggleTile(
+                  context,
                   "Share activity on leaderboard",
                   "Display your first name and points",
                   _showActivity,
@@ -95,10 +103,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
             _section(
+              context,
               "Accessibility",
               Icons.accessibility_new,
               [
                 _toggleTile(
+                  context,
                   "High contrast",
                   "Stronger borders and text",
                   _highContrast,
@@ -108,6 +118,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 _toggleTile(
+                  context,
                   "Colour-blind friendly palette",
                   "Adjusts charts and status colours",
                   _colorBlindMode,
@@ -121,6 +132,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
             _section(
+              context,
               "Account",
               Icons.logout,
               [
@@ -179,7 +191,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _section(String title, IconData icon, List<Widget> children) {
+  Widget _section(
+    BuildContext context,
+    String title,
+    IconData icon,
+    List<Widget> children,
+  ) {
+    final p = CreationPalette(colorBlind: widget.appPrefs.colorBlindMode);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -202,10 +220,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3E8FF),
+                  color: p.settingsSectionIconBackground,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: const Color(0xFF7C3AED), size: 22),
+                child: Icon(icon, color: p.settingsSectionIconForeground, size: 22),
               ),
               const SizedBox(width: 12),
               Text(
@@ -226,11 +244,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _toggleTile(
+    BuildContext context,
     String title,
     String subtitle,
     bool value,
     ValueChanged<bool> onChanged,
   ) {
+    final p = CreationPalette(colorBlind: widget.appPrefs.colorBlindMode);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: SwitchListTile(
@@ -248,8 +268,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
         ),
         value: value,
-        activeThumbColor: const Color(0xFF7C3AED),
-        activeTrackColor: const Color(0xFF7C3AED).withValues(alpha: 0.45),
+        activeThumbColor: p.switchActiveThumb,
+        activeTrackColor: p.switchActiveTrackTranslucent,
         onChanged: onChanged,
       ),
     );
@@ -306,6 +326,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _sliderTile() {
+    final pal =
+        CreationPalette(colorBlind: widget.appPrefs.colorBlindMode);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -333,9 +355,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 8),
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
-            activeTrackColor: const Color(0xFF8B5CF6),
-            thumbColor: const Color(0xFF7C3AED),
-            overlayColor: const Color(0xFF8B5CF6).withOpacity(0.2),
+            activeTrackColor: pal.sliderActive,
+            thumbColor: pal.sliderThumb,
+            overlayColor: pal.sliderThumb.withValues(alpha: 0.2),
           ),
           child: Slider(
             min: 0.85,

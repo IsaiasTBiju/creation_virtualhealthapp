@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
+import '../../creation_palette.dart';
+
 class WellnessDay {
   final DateTime date;
   final int energy; // 0–10
@@ -30,6 +32,7 @@ class WellnessDay {
 }
 
 class WellnessScreen extends StatefulWidget {
+  final CreationPalette palette;
   final List<WellnessDay> days;
   final int totalMindfulnessMinutes;
 
@@ -38,6 +41,7 @@ class WellnessScreen extends StatefulWidget {
 
   const WellnessScreen({
     super.key,
+    required this.palette,
     required this.days,
     required this.totalMindfulnessMinutes,
     required this.onLogMood,
@@ -553,12 +557,12 @@ class _WellnessScreenState extends State<WellnessScreen> {
                               ),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? const Color(0xFF4F46E5)
+                                    ? widget.palette.wellnessMoodSelectedFill
                                     : const Color(0xFFF3F4F6),
                                 borderRadius: BorderRadius.circular(999),
                                 border: Border.all(
                                   color: isSelected
-                                      ? const Color(0xFF4F46E5)
+                                      ? widget.palette.wellnessMoodSelectedFill
                                       : const Color(0xFFE5E7EB),
                                 ),
                               ),

@@ -4,7 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AppPreferences extends ChangeNotifier {
   static const _kTextScale = 'pref_text_scale';
   static const _kHighContrast = 'pref_high_contrast';
-  static const _kColorBlind = 'pref_color_blind';
+  /// SharedPreferences key (also written during onboarding).
+  static const storageKeyColorBlind = 'pref_color_blind';
 
   double textScale = 1.0;
   bool highContrast = false;
@@ -14,7 +15,7 @@ class AppPreferences extends ChangeNotifier {
     final p = await SharedPreferences.getInstance();
     textScale = p.getDouble(_kTextScale) ?? 1.0;
     highContrast = p.getBool(_kHighContrast) ?? false;
-    colorBlindMode = p.getBool(_kColorBlind) ?? false;
+    colorBlindMode = p.getBool(storageKeyColorBlind) ?? false;
     notifyListeners();
   }
 
@@ -35,7 +36,7 @@ class AppPreferences extends ChangeNotifier {
   Future<void> setColorBlindMode(bool value) async {
     colorBlindMode = value;
     final p = await SharedPreferences.getInstance();
-    await p.setBool(_kColorBlind, value);
+    await p.setBool(storageKeyColorBlind, value);
     notifyListeners();
   }
 

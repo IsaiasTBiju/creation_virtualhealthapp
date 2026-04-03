@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../creation_palette.dart';
+
 class ChatbotScreen extends StatefulWidget {
-  const ChatbotScreen({super.key});
+  final CreationPalette palette;
+
+  const ChatbotScreen({super.key, required this.palette});
 
   @override
   State<ChatbotScreen> createState() => _ChatbotScreenState();
@@ -47,7 +51,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                           child: ListView.builder(
                             padding: const EdgeInsets.all(14),
                             itemCount: messages.length,
-                            itemBuilder: (_, i) => _bubble(messages[i]),
+                            itemBuilder: (ctx, i) =>
+                                _bubble(messages[i]),
                           ),
                         ),
                         Container(
@@ -123,22 +128,29 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     );
   }
 
-  Widget _bubble(_Msg m) => Align(
-        alignment: m.user ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          constraints: const BoxConstraints(maxWidth: 520),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: m.user ? const Color(0xFF6C2CF3) : const Color(0xFFF3F4F6),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            m.text,
-            style: TextStyle(color: m.user ? Colors.white : const Color(0xFF111827)),
+  Widget _bubble(_Msg m) {
+    final p = widget.palette;
+    return Align(
+      alignment: m.user ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        constraints: const BoxConstraints(maxWidth: 520),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: m.user ? p.chatBubbleUser : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          m.text,
+          style: TextStyle(
+            color: m.user
+                ? CreationPalette.chatBubbleUserForeground
+                : const Color(0xFF111827),
           ),
         ),
-      );
+      ),
+    );
+  }
 
   void _send() {
     final t = input.text.trim();

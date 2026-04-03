@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../app_preferences.dart';
+import '../../creation_palette.dart';
 import 'appointments_screen.dart';
 import 'chatbot_screen.dart';
 import 'dashboard_screen.dart';
@@ -34,6 +35,22 @@ class DashboardShell extends StatefulWidget {
 
 class _DashboardShellState extends State<DashboardShell> {
   int selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.appPrefs.addListener(_onAppPrefsChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.appPrefs.removeListener(_onAppPrefsChanged);
+    super.dispose();
+  }
+
+  void _onAppPrefsChanged() {
+    if (mounted) setState(() {});
+  }
 
   // FITNESS
   List<Map<String, dynamic>> workouts = [
@@ -92,8 +109,11 @@ class _DashboardShellState extends State<DashboardShell> {
 
   @override
   Widget build(BuildContext context) {
+    final palette =
+        CreationPalette(colorBlind: widget.appPrefs.colorBlindMode);
     final pages = [
       DashboardScreen(
+  palette: palette,
   workouts: workouts,
   wellnessDays: wellnessDays,
   todayMeals: todayMeals,
@@ -107,6 +127,7 @@ class _DashboardShellState extends State<DashboardShell> {
 
       // FITNESS
       FitnessScreen(
+        palette: palette,
         workouts: workouts,
         onAddWorkout: (workout) {
           setState(() => workouts.insert(0, workout));
@@ -115,6 +136,7 @@ class _DashboardShellState extends State<DashboardShell> {
 
       // WELLNESS
       WellnessScreen(
+        palette: palette,
         days: wellnessDays,
         totalMindfulnessMinutes: totalMindfulnessMinutes,
         onLogMood: (updatedDay) {
@@ -131,6 +153,7 @@ class _DashboardShellState extends State<DashboardShell> {
 
       // NUTRITION
       NutritionScreen(
+        palette: palette,
         dailyCalorieGoal: dailyCalorieGoal,
         dailyWaterGoal: dailyWaterGoal,
         todayCalories: todayCalories,
@@ -159,6 +182,7 @@ class _DashboardShellState extends State<DashboardShell> {
 
       // MEDICATIONS
       MedicationScreen(
+        palette: palette,
         medications: medications,
         notificationsPlugin: widget.notificationsPlugin,
         onAddMedication: (med) {
@@ -196,13 +220,13 @@ class _DashboardShellState extends State<DashboardShell> {
         },
         onDelete: (id) => setState(() => appointments.removeWhere((a) => a.id == id)),
       ),
-      const ChatbotScreen(),
-      const MessagesScreen(),
-      const SocialHubScreen(),
-      const AchievementsScreen(),
-      const JournalScreen(),
+      ChatbotScreen(palette: palette),
+      MessagesScreen(palette: palette),
+      SocialHubScreen(palette: palette),
+      AchievementsScreen(palette: palette),
+      JournalScreen(palette: palette),
       const BrainGamesScreen(),
-      const ProfileScreen(),
+      ProfileScreen(palette: palette),
       SettingsScreen(appPrefs: widget.appPrefs),
     ];
 
@@ -228,12 +252,12 @@ class _DashboardShellState extends State<DashboardShell> {
             child: Column(
               children: [
                 const SizedBox(height: 40),
-                const Text(
+                Text(
                   "Creation",
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: Colors.purple,
+                    color: palette.sidebarBrandTitle,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -241,21 +265,21 @@ class _DashboardShellState extends State<DashboardShell> {
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
-                        _navItem(Icons.dashboard, "Dashboard", 0),
-                        _navItem(Icons.favorite, "Fitness Tracking", 1),
-                        _navItem(Icons.self_improvement, "Wellness", 2),
-                        _navItem(Icons.restaurant, "Nutrition", 3),
-                        _navItem(Icons.medication, "Medications", 4),
-                        _navItem(Icons.monitor_heart, "Biometrics", 5),
-                        _navItem(Icons.calendar_month, "Appointments", 6),
-                        _navItem(Icons.smart_toy_outlined, "AI Companion", 7),
-                        _navItem(Icons.chat_bubble_outline, "Messages", 8),
-                        _navItem(Icons.people, "Social Hub", 9),
-                        _navItem(Icons.emoji_events, "Achievements", 10),
-                        _navItem(Icons.book, "Journal", 11),
-                        _navItem(Icons.videogame_asset, "Brain Games", 12),
-                        _navItem(Icons.person, "Profile", 13),
-                        _navItem(Icons.settings, "Settings", 14),
+                        _navItem(Icons.dashboard, "Dashboard", 0, palette),
+                        _navItem(Icons.favorite, "Fitness Tracking", 1, palette),
+                        _navItem(Icons.self_improvement, "Wellness", 2, palette),
+                        _navItem(Icons.restaurant, "Nutrition", 3, palette),
+                        _navItem(Icons.medication, "Medications", 4, palette),
+                        _navItem(Icons.monitor_heart, "Biometrics", 5, palette),
+                        _navItem(Icons.calendar_month, "Appointments", 6, palette),
+                        _navItem(Icons.smart_toy_outlined, "AI Companion", 7, palette),
+                        _navItem(Icons.chat_bubble_outline, "Messages", 8, palette),
+                        _navItem(Icons.people, "Social Hub", 9, palette),
+                        _navItem(Icons.emoji_events, "Achievements", 10, palette),
+                        _navItem(Icons.book, "Journal", 11, palette),
+                        _navItem(Icons.videogame_asset, "Brain Games", 12, palette),
+                        _navItem(Icons.person, "Profile", 13, palette),
+                        _navItem(Icons.settings, "Settings", 14, palette),
                       ],
                     ),
                   ),
@@ -285,7 +309,7 @@ class _DashboardShellState extends State<DashboardShell> {
     );
   }
 
-  Widget _navItem(IconData icon, String label, int index) {
+  Widget _navItem(IconData icon, String label, int index, CreationPalette palette) {
     final isSelected = selectedIndex == index;
 
     return Padding(
@@ -296,9 +320,7 @@ class _DashboardShellState extends State<DashboardShell> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
           decoration: BoxDecoration(
-            color: isSelected
-                ? const Color.fromARGB(255, 90, 102, 235)
-                : Colors.transparent,
+            color: isSelected ? palette.navSelectedBackground : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(

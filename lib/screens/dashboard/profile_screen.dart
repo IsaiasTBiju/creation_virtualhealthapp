@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app_session.dart';
+import '../../creation_palette.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final CreationPalette palette;
+
+  const ProfileScreen({super.key, required this.palette});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -129,14 +132,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6C2CF3), Color(0xFFA855F7), Color(0xFFC084FC)],
-        ),
+        gradient: LinearGradient(colors: widget.palette.healthScoreGradient),
         boxShadow: [
           BoxShadow(
             blurRadius: 24,
             offset: const Offset(0, 12),
-            color: const Color(0xFF6C2CF3).withOpacity(0.35),
+            color: widget.palette.brandGlowShadow,
           ),
         ],
       ),
@@ -246,10 +247,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3E8FF),
+              color: widget.palette.settingsSectionIconBackground,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: const Color(0xFF7C3AED), size: 22),
+            child: Icon(icon,
+                color: widget.palette.settingsSectionIconForeground, size: 22),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -338,7 +340,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             value: value,
             minHeight: 8,
             backgroundColor: const Color(0xFFE5E7EB),
-            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF8B5CF6)),
+            valueColor: AlwaysStoppedAnimation<Color>(
+                widget.palette.accentViolet),
           ),
         ),
       ],

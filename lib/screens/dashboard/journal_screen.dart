@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../creation_palette.dart';
+
 class JournalEntry {
   final DateTime date;
   final String title;
@@ -13,7 +15,9 @@ class JournalEntry {
 }
 
 class JournalScreen extends StatefulWidget {
-  const JournalScreen({super.key});
+  final CreationPalette palette;
+
+  const JournalScreen({super.key, required this.palette});
 
   @override
   State<JournalScreen> createState() => _JournalScreenState();
@@ -151,7 +155,8 @@ class _JournalScreenState extends State<JournalScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.book_outlined, size: 20, color: Colors.purple.shade400),
+              Icon(Icons.book_outlined,
+                  size: 20, color: widget.palette.workoutRowIcon),
               const SizedBox(width: 8),
               Text(
                 _formatDate(e.date),
