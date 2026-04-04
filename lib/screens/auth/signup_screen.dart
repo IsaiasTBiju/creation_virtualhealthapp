@@ -985,6 +985,7 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
                         email: emailText,
                         displayName: nameText,
                         role: accountRole,
+                        token: token,
                       );
                       
                       await widget.appPrefs.setColorBlindMode(colorBlind);

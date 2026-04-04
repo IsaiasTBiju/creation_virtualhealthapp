@@ -3,53 +3,112 @@ import { Server } from 'socket.io';
 
 const port = Number(process.env.PORT || 3001);
 
-const httpServer = createServer();
-const io = new Server(server, {
+const httpServer = createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ status: 'ok', activeUsers: activeUsers.size }));
+});
+
+const io = new Server(httpServer, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
 });
 
+// ── Active-user tracking ──────────────────────────────
+// Map<socketId, { userId, displayName, joinedAt }>
+const activeUsers = new Map();
+
+function broadcastUserList() {
+  const list = [...activeUsers.values()].map((u) => ({
+    userId: u.userId,
+    displayName: u.displayName,
+  }));
+  io.emit('user_list', { users: list, count: list.length });
+}
+
+// ── Connection handler ────────────────────────────────
 io.on('connection', (socket) => {
-  socket.on('join_room', (payload = {}) => {
-    const room = String(payload.room || 'default-room');
+  console.log(`+ socket connected: ${socket.id}`);
+
+  // Client sends this right after connecting
+  socket.on('register_user', (payload = {}) => {
     const userId = String(payload.userId || socket.id);
-    socket.data.userId = userId;
-    socket.join(room);
-    io.to(room).emit('private_message', {
-      from: 'system',
-      to: userId,
-      body: `${userId} joined ${room}`,
+    const displayName = String(payload.displayName || 'Anonymous');
+
+    activeUsers.set(socket.id, {
+      userId,
+      displayName,
+      joinedAt: new Date().toISOString(),
+    });
+
+    console.log(`  registered: ${displayName} (${userId})`);
+    broadcastUserList();
+
+    // Send a system message so everyone sees who joined
+    io.emit('receive_message', {
+      id: `sys-${Date.now()}`,
+      sender: '__system__',
+      senderName: 'System',
+      text: `${displayName} joined the chat`,
       timestamp: new Date().toISOString(),
     });
   });
 
-  socket.on('private_message', (payload = {}) => {
-    const room = String(payload.room || 'default-room');
-    io.to(room).emit('private_message', {
-      from: String(payload.from || socket.data.userId || socket.id),
-      to: String(payload.to || ''),
-      body: String(payload.body || ''),
+  // Client sends a chat message
+  socket.on('send_message', (payload = {}) => {
+    const me = activeUsers.get(socket.id);
+    const msg = {
+      id: `${socket.id}-${Date.now()}`,
+      sender: String(payload.sender || me?.userId || socket.id),
+      senderName: String(payload.senderName || me?.displayName || 'Anonymous'),
+      text: String(payload.text || ''),
       timestamp: payload.timestamp || new Date().toISOString(),
+    };
+
+    // Broadcast to ALL sockets including the sender
+    io.emit('receive_message', msg);
+  });
+
+  // Typing indicator
+  socket.on('typing', (payload = {}) => {
+    socket.broadcast.emit('user_typing', {
+      userId: payload.userId,
+      displayName: payload.displayName,
     });
   });
 
-  socket.on('presence_ping', (payload = {}) => {
-    socket.emit('presence_pong', {
-      userId: String(payload.userId || socket.data.userId || socket.id),
-      timestamp: new Date().toISOString(),
+  socket.on('stop_typing', () => {
+    socket.broadcast.emit('user_stop_typing', {
+      userId: activeUsers.get(socket.id)?.userId,
     });
+  });
+
+  // Disconnect
+  socket.on('disconnect', (reason) => {
+    const user = activeUsers.get(socket.id);
+    if (user) {
+      console.log(`- disconnected: ${user.displayName} (${reason})`);
+      activeUsers.delete(socket.id);
+      broadcastUserList();
+
+      io.emit('receive_message', {
+        id: `sys-${Date.now()}`,
+        sender: '__system__',
+        senderName: 'System',
+        text: `${user.displayName} left the chat`,
+        timestamp: new Date().toISOString(),
+      });
+    }
   });
 });
 
+// ── Start ─────────────────────────────────────────────
 httpServer.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.error(
-      `Port ${port} is already in use. Either stop the other process or run:\n` +
-        `  PORT=3002 npm start\n` +
-        `On macOS/Linux you can free the port with:\n` +
-        `  kill $(lsof -t -iTCP:${port} -sTCP:LISTEN)`,
+      `Port ${port} is already in use. Stop the other process or run:\n` +
+        `  PORT=3002 npm start`
     );
   } else {
     console.error(err);
@@ -58,5 +117,5 @@ httpServer.on('error', (err) => {
 });
 
 httpServer.listen(port, () => {
-  console.log(`Realtime socket server listening on http://localhost:${port}`);
+  console.log(`Creation realtime server listening on http://localhost:${port}`);
 });

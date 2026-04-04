@@ -55,9 +55,18 @@ Future<void> _signIn() async {
     setState(() => _loading = false);
 
     if (token != null) {
+      // Fetch profile to get the user's actual display name
+      String? displayName;
+      final profile = await ApiService.getProfile(token);
+      if (profile != null) {
+        displayName = profile['full_name'] as String?;
+      }
+
       await AppSession.saveSignIn(
         email: emailText,
         role: _role,
+        displayName: displayName,
+        token: token,
         rememberEmail: _remember,
       );
       

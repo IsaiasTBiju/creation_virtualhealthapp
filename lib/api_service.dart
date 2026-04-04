@@ -111,4 +111,150 @@ static Future<String?> loginUser(String email, String password) async {
       return false;
     }
   }
+
+  /// Fetch the logged-in user's profile (returns full_name, age, etc.)
+  static Future<Map<String, dynamic>?> getProfile(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/profile'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        print("Get Profile Error: ${response.body}");
+        return null;
+      }
+    } catch (e) {
+      print("Get Profile Exception: $e");
+      return null;
+    }
+  }
+
+  // send a message to the AI chatbot
+  static Future<Map<String, dynamic>?> chatbot(String token, String message) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/chatbot'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'user_message': message}),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print("Chatbot Exception: $e");
+      return null;
+    }
+  }
+
+  // load past chatbot conversations
+  static Future<List<dynamic>> chatbotHistory(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/chatbot/history'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print("Chatbot History Exception: $e");
+      return [];
+    }
+  }
+
+  // get gamification stats
+  static Future<Map<String, dynamic>?> getGamification(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/gamification'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print("Gamification Exception: $e");
+      return null;
+    }
+  }
+
+  // get leaderboard
+  static Future<List<dynamic>> getLeaderboard() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/leaderboard'));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print("Leaderboard Exception: $e");
+      return [];
+    }
+  }
+
+  // get earned badges
+  static Future<List<dynamic>> getBadges(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/badges'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print("Badges Exception: $e");
+      return [];
+    }
+  }
+
+  // generic authenticated GET helper
+  static Future<List<dynamic>> getList(String token, String endpoint) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/$endpoint'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      }
+      return [];
+    } catch (e) {
+      print("GET $endpoint Exception: $e");
+      return [];
+    }
+  }
+
+  // generic authenticated POST helper
+  static Future<Map<String, dynamic>?> postData(String token, String endpoint, Map<String, dynamic> body) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/$endpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print("POST $endpoint Exception: $e");
+      return null;
+    }
+  }
 }

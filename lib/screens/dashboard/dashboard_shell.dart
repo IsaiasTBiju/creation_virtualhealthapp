@@ -113,17 +113,16 @@ class _DashboardShellState extends State<DashboardShell> {
         CreationPalette(colorBlind: widget.appPrefs.colorBlindMode);
     final pages = [
       DashboardScreen(
-  palette: palette,
-  workouts: workouts,
-  wellnessDays: wellnessDays,
-  todayMeals: todayMeals,
-  todayCalories: todayCalories,
-  todayWater: todayWater,
-  medications: medications,
-  biometrics: biometricEntries,
-  onOpenAppointments: () => setState(() => selectedIndex = 6),
-),
-
+        palette: palette,
+        workouts: workouts,
+        wellnessDays: wellnessDays,
+        todayMeals: todayMeals,
+        todayCalories: todayCalories,
+        todayWater: todayWater,
+        medications: medications,
+        biometrics: biometricEntries,
+        onOpenAppointments: () => setState(() => selectedIndex = 6),
+      ),
 
       // FITNESS
       FitnessScreen(
@@ -221,7 +220,11 @@ class _DashboardShellState extends State<DashboardShell> {
         onDelete: (id) => setState(() => appointments.removeWhere((a) => a.id == id)),
       ),
       ChatbotScreen(palette: palette),
+      
+      // --- THE FIX IS HERE ---
       MessagesScreen(palette: palette),
+      // -----------------------
+
       SocialHubScreen(palette: palette),
       AchievementsScreen(palette: palette),
       JournalScreen(palette: palette),
