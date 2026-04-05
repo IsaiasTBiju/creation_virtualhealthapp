@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../creation_palette.dart';
+import '../../api_service.dart';
+import '../../app_session.dart';
 
 class BadgeItem {
   final String title;
@@ -18,62 +20,86 @@ class BadgeItem {
   });
 }
 
-List<BadgeItem> _badgesFor(CreationPalette p) {
-  return [
-    BadgeItem(
-      title: "First Steps",
-      description: "Complete your first workout",
-      icon: Icons.directions_run,
-      unlocked: true,
-      accent: const Color(0xFF2563EB),
-    ),
-    BadgeItem(
-      title: "Hydration Hero",
-      description: "Hit water goal 7 days in a row",
-      icon: Icons.water_drop,
-      unlocked: true,
-      accent: const Color(0xFF0EA5E9),
-    ),
-    BadgeItem(
-      title: "Mindful Week",
-      description: "Log mindfulness 5 times",
-      icon: Icons.self_improvement,
-      unlocked: true,
-      accent: p.accentViolet,
-    ),
-    BadgeItem(
-      title: "Streak Master",
-      description: "Maintain a 14-day activity streak",
-      icon: Icons.local_fire_department,
-      unlocked: false,
-      accent: const Color(0xFFF97316),
-    ),
-    BadgeItem(
-      title: "Community Star",
-      description: "Finish top 5 on the weekly board",
-      icon: Icons.emoji_events,
-      unlocked: false,
-      accent: const Color(0xFFEAB308),
-    ),
-    BadgeItem(
-      title: "Balanced Life",
-      description: "Log mood + sleep + nutrition same day",
-      icon: Icons.balance,
-      unlocked: false,
-      accent: const Color(0xFF10B981),
-    ),
-  ];
-}
+// all possible badges with icons
+const Map<String, IconData> _badgeIcons = {
+  "First Steps": Icons.directions_run,
+  "Week Warrior": Icons.local_fire_department,
+  "Century Club": Icons.stars,
+  "Dedicated": Icons.military_tech,
+  "Unstoppable": Icons.bolt,
+};
 
-class AchievementsScreen extends StatelessWidget {
+class AchievementsScreen extends StatefulWidget {
   final CreationPalette palette;
 
   const AchievementsScreen({super.key, required this.palette});
 
   @override
+  State<AchievementsScreen> createState() => _AchievementsScreenState();
+}
+
+class _AchievementsScreenState extends State<AchievementsScreen> {
+  List<BadgeItem> _badges = [];
+  int _level = 1;
+  int _points = 0;
+  int _streak = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final token = await AppSession.getToken();
+    if (token == null) return;
+
+    // load gamification stats
+    final gam = await ApiService.getMap(token, 'gamification');
+    if (mounted && gam != null) {
+      setState(() {
+        _level = gam['level'] ?? 1;
+        _points = gam['total_points'] ?? 0;
+        _streak = gam['current_streak_days'] ?? 0;
+      });
+    }
+
+    // load earned badges
+    final earnedBadges = await ApiService.getBadges(token);
+    final earnedNames = earnedBadges.map((b) => b['badge_name']?.toString() ?? '').toSet();
+
+    // build badge list — all possible badges, mark earned ones as unlocked
+    final allBadges = [
+      {"name": "First Steps", "desc": "Log your first activity", "color": const Color(0xFF2563EB)},
+      {"name": "Week Warrior", "desc": "Maintain a 7-day streak", "color": const Color(0xFFF97316)},
+      {"name": "Century Club", "desc": "Earn 100 total points", "color": const Color(0xFF10B981)},
+      {"name": "Dedicated", "desc": "Reach level 5", "color": widget.palette.accentViolet},
+      {"name": "Unstoppable", "desc": "Achieve a 30-day streak", "color": const Color(0xFFEF4444)},
+      {"name": "Hydration Hero", "desc": "Hit water goal 7 days in a row", "color": const Color(0xFF0EA5E9)},
+      {"name": "Mindful Week", "desc": "Log mindfulness 5 times", "color": widget.palette.accentViolet},
+      {"name": "Community Star", "desc": "Finish top 5 on the weekly board", "color": const Color(0xFFEAB308)},
+      {"name": "Balanced Life", "desc": "Log mood + sleep + nutrition same day", "color": const Color(0xFF10B981)},
+    ];
+
+    if (mounted) {
+      setState(() {
+        _badges = allBadges.map((b) {
+          final name = b['name'] as String;
+          return BadgeItem(
+            title: name,
+            description: b['desc'] as String,
+            icon: _badgeIcons[name] ?? Icons.emoji_events,
+            unlocked: earnedNames.contains(name),
+            accent: b['color'] as Color,
+          );
+        }).toList();
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final badges = _badgesFor(palette);
-    final unlockedCount = badges.where((b) => b.unlocked).length;
+    final unlockedCount = _badges.where((b) => b.unlocked).length;
 
     return Container(
       color: const Color.fromARGB(255, 243, 243, 243),
@@ -84,11 +110,11 @@ class AchievementsScreen extends StatelessWidget {
           children: [
             _header(),
             const SizedBox(height: 28),
-            _summaryRow(unlockedCount, badges),
+            _summaryRow(unlockedCount),
             const SizedBox(height: 28),
             _weeklyChallenge(),
             const SizedBox(height: 28),
-            _badgesGrid(badges),
+            _badgesGrid(),
           ],
         ),
       ),
@@ -120,14 +146,14 @@ class AchievementsScreen extends StatelessWidget {
     );
   }
 
-  Widget _summaryRow(int unlocked, List<BadgeItem> badges) {
+  Widget _summaryRow(int unlocked) {
     return Row(
       children: [
         Expanded(
           child: _statCard(
             "Level",
-            "12",
-            "Wellness tier",
+            "$_level",
+            "$_points total points",
             Icons.military_tech,
             const Color(0xFFEFF6FF),
             const Color(0xFF2563EB),
@@ -137,7 +163,7 @@ class AchievementsScreen extends StatelessWidget {
         Expanded(
           child: _statCard(
             "Current streak",
-            "7 days",
+            "$_streak days",
             "Keep it going",
             Icons.bolt,
             const Color(0xFFFFF7ED),
@@ -148,11 +174,11 @@ class AchievementsScreen extends StatelessWidget {
         Expanded(
           child: _statCard(
             "Badges earned",
-            "$unlocked / ${badges.length}",
+            "$unlocked / ${_badges.length}",
             "Collect them all",
             Icons.workspace_premium,
-            palette.summaryIconBackground,
-            palette.accentDeepPurple,
+            widget.palette.summaryIconBackground,
+            widget.palette.accentDeepPurple,
           ),
         ),
       ],
@@ -233,12 +259,12 @@ class AchievementsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(colors: palette.brandGradientShort),
+        gradient: LinearGradient(colors: widget.palette.brandGradientShort),
         boxShadow: [
           BoxShadow(
             blurRadius: 20,
             offset: const Offset(0, 10),
-            color: palette.brandGlowShadow,
+            color: widget.palette.brandGlowShadow,
           ),
         ],
       ),
@@ -295,7 +321,8 @@ class AchievementsScreen extends StatelessWidget {
     );
   }
 
-  Widget _badgesGrid(List<BadgeItem> badges) {
+  Widget _badgesGrid() {
+    final badges = _badges;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),

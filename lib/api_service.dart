@@ -124,12 +124,10 @@ static Future<String?> loginUser(String email, String password) async {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
-      } else {
-        print("Get Profile Error: ${response.body}");
-        return null;
       }
+      // 404 = no profile yet, that's normal for new users
+      return null;
     } catch (e) {
-      print("Get Profile Exception: $e");
       return null;
     }
   }
@@ -232,8 +230,25 @@ static Future<String?> loginUser(String email, String password) async {
       }
       return [];
     } catch (e) {
-      print("GET $endpoint Exception: $e");
+      // network errors on web are common, don't spam console
       return [];
+    }
+  }
+
+  // authenticated GET that returns a single object (not a list)
+  static Future<Map<String, dynamic>?> getMap(String token, String endpoint) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/$endpoint'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print("GET $endpoint Exception: $e");
+      return null;
     }
   }
 
@@ -253,8 +268,42 @@ static Future<String?> loginUser(String email, String password) async {
       }
       return null;
     } catch (e) {
-      print("POST $endpoint Exception: $e");
       return null;
+    }
+  }
+
+  // generic authenticated PUT helper
+  static Future<Map<String, dynamic>?> putData(String token, String endpoint, [Map<String, dynamic>? body]) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/$endpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: body != null ? jsonEncode(body) : null,
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print("PUT $endpoint Exception: $e");
+      return null;
+    }
+  }
+
+  // generic authenticated DELETE helper
+  static Future<bool> deleteData(String token, String endpoint) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/$endpoint'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("DELETE $endpoint Exception: $e");
+      return false;
     }
   }
 }

@@ -425,7 +425,7 @@ class FAQSection extends StatelessWidget {
             FAQCard(
               question: "Can I use Creation on my phone?",
               answer:
-                  "Yes, Creation works on all devices through your web browser. Native mobile apps are coming soon!",
+                  "Yes, Creation works on all devices through your web browser. Native mobile apps are planned for future releases.",
             ),
           ],
         ),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app_session.dart';
+import '../../api_service.dart';
 
-/// Dedicated admin entry (S-FR-5-1). Demo portal code — not production security.
+// Admin portal entry (S-FR-5-1)
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
 
@@ -30,21 +31,32 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     final code = _portal.text.trim().toUpperCase();
     if (code != 'ORIGIN') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid portal access code (demo: ORIGIN).'),
-        ),
+        const SnackBar(content: Text('Invalid portal access code.')),
       );
       return;
     }
     setState(() => _loading = true);
-    await AppSession.saveSignIn(
-      email: _email.text.trim(),
-      role: AppSession.roleAdmin,
-      displayName: 'Administrator',
-    );
-    if (!mounted) return;
-    setState(() => _loading = false);
-    Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
+
+    // authenticate with the backend
+    final token = await ApiService.loginUser(_email.text.trim(), _password.text);
+
+    if (token != null) {
+      await AppSession.saveSignIn(
+        email: _email.text.trim(),
+        role: AppSession.roleAdmin,
+        displayName: 'Administrator',
+        token: token,
+      );
+      if (!mounted) return;
+      setState(() => _loading = false);
+      Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
+    } else {
+      setState(() => _loading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid email or password.'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   @override
@@ -92,7 +104,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Restricted access. Demo only — use portal code ORIGIN.',
+                    'Restricted access. Enter your credentials and portal code.',
                     style: TextStyle(
                       color: Colors.blueGrey.shade300,
                       fontSize: 15,

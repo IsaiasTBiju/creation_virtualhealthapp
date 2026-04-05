@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app_session.dart';
+import '../../api_service.dart';
 import '../../creation_palette.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -14,21 +15,22 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _name = "Alex Rivera";
-  String _email = "alex@example.com";
+  String _name = "";
+  String _email = "";
   String _roleDisplay = "Wellness member";
-  int _age = 28;
+  int _age = 0;
   String _gender = "Prefer not to say";
-  double _heightCm = 172;
-  double _weightKg = 70;
+  double _heightCm = 0;
+  double _weightKg = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadSessionProfile();
+    _loadProfile();
   }
 
-  Future<void> _loadSessionProfile() async {
+  Future<void> _loadProfile() async {
+    // load from local session first
     final p = await SharedPreferences.getInstance();
     final n = p.getString(AppSession.keyDisplayName);
     final e = p.getString(AppSession.keyUserEmail);
@@ -44,6 +46,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } else {
         _roleDisplay = "Wellness member";
       }
+    });
+
+    // then fetch full profile from backend
+    final token = await AppSession.getToken();
+    if (token == null) return;
+    final profile = await ApiService.getProfile(token);
+    if (!mounted || profile == null) return;
+    setState(() {
+      if (profile['full_name'] != null) _name = profile['full_name'];
+      if (profile['age'] != null) _age = (profile['age'] as num).toInt();
+      if (profile['gender'] != null) _gender = profile['gender'];
+      if (profile['height_cm'] != null) _heightCm = (profile['height_cm'] as num).toDouble();
+      if (profile['weight_kg'] != null) _weightKg = (profile['weight_kg'] as num).toDouble();
     });
   }
 
@@ -216,13 +231,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Personal information",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
-            ),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  "Personal information",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _editProfile,
+                icon: const Icon(Icons.edit, size: 16),
+                label: const Text('Edit'),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           _infoRow(
@@ -234,6 +260,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _infoRow(Icons.wc_outlined, "Gender", _gender),
           _infoRow(Icons.height, "Height", "${_heightCm.round()} cm"),
           _infoRow(Icons.monitor_weight_outlined, "Weight", "${_weightKg.toStringAsFixed(1)} kg"),
+        ],
+      ),
+    );
+  }
+
+  void _editProfile() {
+    final nameCtrl = TextEditingController(text: _name);
+    final ageCtrl = TextEditingController(text: '$_age');
+    final heightCtrl = TextEditingController(text: '${_heightCm.round()}');
+    final weightCtrl = TextEditingController(text: _weightKg.toStringAsFixed(1));
+    String gender = _gender;
+    // normalize gender to match dropdown options
+    const genderOptions = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
+    String genderValue = genderOptions.firstWhere(
+      (g) => g.toLowerCase() == gender.toLowerCase(),
+      orElse: () => 'Prefer not to say',
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Edit profile'),
+        content: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Full name')),
+              const SizedBox(height: 12),
+              TextField(controller: ageCtrl, decoration: const InputDecoration(labelText: 'Age'), keyboardType: TextInputType.number),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: genderValue,
+                decoration: const InputDecoration(labelText: 'Gender'),
+                items: genderOptions
+                    .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                    .toList(),
+                onChanged: (v) => gender = v ?? gender,
+              ),
+              const SizedBox(height: 12),
+              TextField(controller: heightCtrl, decoration: const InputDecoration(labelText: 'Height (cm)'), keyboardType: TextInputType.number),
+              const SizedBox(height: 12),
+              TextField(controller: weightCtrl, decoration: const InputDecoration(labelText: 'Weight (kg)'), keyboardType: TextInputType.number),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final token = await AppSession.getToken();
+              if (token == null) return;
+              final body = <String, dynamic>{
+                'full_name': nameCtrl.text.trim(),
+                'age': int.tryParse(ageCtrl.text.trim()) ?? _age,
+                'gender': gender,
+                'height_cm': double.tryParse(heightCtrl.text.trim()) ?? _heightCm,
+                'weight_kg': double.tryParse(weightCtrl.text.trim()) ?? _weightKg,
+              };
+              await ApiService.putData(token, 'profile', body);
+              // update local session name
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString(AppSession.keyDisplayName, nameCtrl.text.trim());
+              _loadProfile();
+            },
+            child: const Text('Save'),
+          ),
         ],
       ),
     );

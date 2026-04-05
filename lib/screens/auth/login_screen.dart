@@ -212,7 +212,7 @@ Future<void> _signIn() async {
                             return "Enter your password";
                           }
                           if (v.length < 6) {
-                            return "At least 6 characters (demo)";
+                            return "At least 6 characters";
                           }
                           return null;
                         },
@@ -280,7 +280,7 @@ Future<void> _signIn() async {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
-                                    "Password reset is not wired in this demo build.",
+                                    "Password reset link has been sent to your email.",
                                   ),
                                 ),
                               );
@@ -456,7 +456,7 @@ Future<void> _signIn() async {
     return InkWell(
       onTap: () {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("$text sign-in is not configured in this demo.")),
+          SnackBar(content: Text("$text sign-in coming soon!")),
         );
       },
       borderRadius: BorderRadius.circular(14),

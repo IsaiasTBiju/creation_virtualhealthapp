@@ -27,6 +27,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -784,63 +785,176 @@ def get_reports(
 
 # --- Chatbot ---
 
+def _build_chatbot_reply(db, user_id, msg, profile, gam):
+    """Generate a context-aware reply using user data and recent conversation."""
+    msg_lower = msg.lower().strip()
+    name = profile.full_name.split()[0] if profile and profile.full_name else "there"
+    has_profile = profile and profile.weight_kg and profile.height_cm
+
+    # grab recent activity stats
+    recent = db.query(sql_tables.ActivityTracking).filter(
+        sql_tables.ActivityTracking.user_id == user_id
+    ).order_by(desc(sql_tables.ActivityTracking.date)).first()
+
+    week_activities = db.query(sql_tables.ActivityTracking).filter(
+        sql_tables.ActivityTracking.user_id == user_id,
+        sql_tables.ActivityTracking.date >= date.today() - timedelta(days=7)
+    ).all()
+
+    week_steps = sum(a.steps or 0 for a in week_activities)
+    week_cals = sum(float(a.calories_burned or 0) for a in week_activities)
+
+    # grab last 3 bot messages to avoid repeating ourselves
+    prev = db.query(sql_tables.ChatbotConversation).filter(
+        sql_tables.ChatbotConversation.user_id == user_id
+    ).order_by(desc(sql_tables.ChatbotConversation.created_at)).limit(3).all()
+    prev_replies = [p.bot_response for p in prev]
+
+    def already_said(fragment):
+        return any(fragment.lower() in r.lower() for r in prev_replies)
+
+    # weight loss / fitness goal intent
+    if any(w in msg_lower for w in ["lose weight", "losing weight", "fat loss", "slim down", "cut down", "get lean"]):
+        if has_profile:
+            bmi = round(float(profile.weight_kg) / (float(profile.height_cm) / 100) ** 2, 1)
+            tips = []
+            if week_cals < 500:
+                tips.append("try to burn at least 300-500 cals daily through walking or light cardio")
+            if bmi > 25:
+                tips.append("a calorie deficit of 300-500 per day is a safe target")
+            tips.append("combine cardio with strength training for best results")
+            tips.append("track your meals in the Nutrition tab to stay on top of intake")
+            return f"Great goal, {name}! Your current BMI is {bmi}. Here's what I'd suggest: {'. '.join(tips[:3])}."
+        else:
+            return f"I'd love to help with that, {name}! First fill in your height and weight in the Profile section so I can give personalized advice."
+
+    # muscle / bulk / gain
+    if any(w in msg_lower for w in ["gain muscle", "bulk", "build muscle", "get stronger", "strength"]):
+        return f"To build muscle, {name}: focus on progressive overload in your workouts, eat enough protein (around 1.6-2g per kg of bodyweight), and get 7-9 hours of sleep for recovery."
+
+    # greeting
+    if any(w in msg_lower for w in ["hello", "hi", "hey", "sup", "yo", "what's up"]):
+        if gam and gam.current_streak_days > 1:
+            return f"Hey {name}! You're on a {gam.current_streak_days}-day streak — nice work. What can I help with today?"
+        return f"Hey {name}! Welcome back. What can I help you with today?"
+
+    # activity / steps / running
+    if any(w in msg_lower for w in ["step", "walk", "run", "activity", "exercise", "workout"]):
+        if recent and not already_said(str(recent.steps)):
+            return f"Your last logged activity ({recent.date}): {recent.steps} steps and {recent.calories_burned} cals. This week you've done {week_steps} total steps across {len(week_activities)} sessions."
+        elif week_activities:
+            return f"This week: {week_steps} steps, {round(week_cals)} calories burned across {len(week_activities)} sessions. Want to set a weekly step goal?"
+        else:
+            return f"No activities logged recently, {name}. Even a 20-minute walk burns around 100 calories. Give it a try and log it in Fitness Tracking!"
+
+    # gamification
+    if any(w in msg_lower for w in ["score", "point", "level", "streak", "badge", "rank", "xp"]):
+        if gam:
+            return f"You're Level {gam.level} with {gam.total_points} pts. Current streak: {gam.current_streak_days} days (personal best: {gam.longest_streak_days}). Keep logging daily to level up!"
+        return "Start logging activities, meals, or wellness data to earn points and climb the leaderboard!"
+
+    # sleep
+    if any(w in msg_lower for w in ["sleep", "tired", "rest", "insomnia", "cant sleep"]):
+        tips = [
+            "stick to a consistent bedtime",
+            "avoid caffeine after 2pm",
+            "put your phone away 30 mins before bed",
+            "keep your room cool and dark"
+        ]
+        if already_said("consistent bedtime"):
+            tips = tips[1:]
+        return f"Sleep tips for you, {name}: {', '.join(tips[:3])}. Aim for 7-9 hours per night."
+
+    # hydration
+    if any(w in msg_lower for w in ["water", "hydrat", "drink", "thirsty"]):
+        return f"You should aim for about 2-3L of water daily, {name}. Tip: drink a glass first thing in the morning and one before each meal."
+
+    # stress / mental health
+    if any(w in msg_lower for w in ["stress", "anxious", "worried", "overwhelm", "panic", "mental"]):
+        return f"Here's a quick technique, {name}: breathe in for 4 seconds, hold for 4, breathe out for 6. Repeat 5 times. Also check out the Wellness section to log your mood daily."
+
+    # nutrition / diet
+    if any(w in msg_lower for w in ["diet", "food", "eat", "nutrition", "calorie", "meal", "protein"]):
+        return f"Solid nutrition plan for you, {name}: fill half your plate with veggies, a quarter with lean protein, and a quarter with complex carbs. Track your meals in the Nutrition section!"
+
+    # goals
+    if any(w in msg_lower for w in ["goal", "target", "aim", "plan"]):
+        goals = db.query(sql_tables.HealthGoal).filter(
+            sql_tables.HealthGoal.user_id == user_id,
+            sql_tables.HealthGoal.is_completed == False
+        ).all()
+        if goals:
+            goal_list = ", ".join([f"{g.goal_type} ({g.current_value}/{g.target_value} {g.unit})" for g in goals[:3]])
+            return f"Your active goals: {goal_list}. Keep pushing, {name}!"
+        return f"You don't have any active goals yet, {name}. Head to the Goals section to set one — it makes a huge difference!"
+
+    # motivation
+    if any(w in msg_lower for w in ["motivat", "inspire", "encourage", "give up", "quit"]):
+        import random
+        quotes = [
+            "The only bad workout is the one that didn't happen.",
+            "Small daily improvements lead to stunning results over time.",
+            "You don't have to be perfect, you just have to be consistent.",
+            "Your body can stand almost anything — it's your mind you have to convince.",
+            "Progress, not perfection.",
+        ]
+        return f"{random.choice(quotes)} You've got this, {name}!"
+
+    # weight / bmi check
+    if any(w in msg_lower for w in ["weight", "bmi", "body", "how much do i weigh"]):
+        if has_profile:
+            bmi = round(float(profile.weight_kg) / (float(profile.height_cm) / 100) ** 2, 1)
+            category = "healthy range" if 18.5 <= bmi <= 24.9 else ("underweight" if bmi < 18.5 else "overweight range")
+            return f"You're {profile.weight_kg}kg at {profile.height_cm}cm. BMI: {bmi} ({category}). Remember BMI is just one indicator — how you feel and your fitness level matter more."
+        return f"Add your height and weight in the Profile section and I can give you a breakdown, {name}."
+
+    # medication
+    if any(w in msg_lower for w in ["medic", "pill", "prescription", "drug", "dose"]):
+        meds = db.query(sql_tables.Medication).filter(
+            sql_tables.Medication.user_id == user_id,
+            sql_tables.Medication.is_active == True
+        ).all()
+        if meds:
+            med_list = ", ".join([f"{m.medication_name} ({m.dosage})" for m in meds[:5]])
+            return f"Your active medications: {med_list}. Make sure reminders are turned on in the Medications section!"
+        return f"No medications logged, {name}. You can add them in the Medications section with dosage reminders."
+
+    # appointment
+    if any(w in msg_lower for w in ["appointment", "doctor", "book", "checkup", "visit"]):
+        return f"You can book, reschedule, or cancel appointments in the Appointments section, {name}. Regular checkups are important!"
+
+    # thanks
+    if any(w in msg_lower for w in ["thanks", "thank", "cheers", "appreciate"]):
+        return f"Anytime, {name}! I'm always here when you need me."
+
+    # help / what can you do
+    if any(w in msg_lower for w in ["help", "what can you", "what do you"]):
+        return f"I can help with: fitness advice, nutrition tips, sleep guidance, stress management, goal tracking, weight management, medication reminders, and general motivation. Just ask, {name}!"
+
+    # fallback — but make it useful, not generic
+    if has_profile and gam:
+        return f"I'm not sure I understood that, {name}. But here's a quick check-in: you're Level {gam.level} with a {gam.current_streak_days}-day streak and {week_steps} steps this week. Want tips on fitness, nutrition, sleep, or goals?"
+    return f"I'm not sure I caught that, {name}. Try asking about fitness, nutrition, sleep, stress, weight goals, or your progress!"
+
+
 @app.post("/chatbot", response_model=api_shapes.ChatbotConversationResponse)
 def chat_with_bot(
     data: api_shapes.ChatbotMessageCreate,
     current_user: sql_tables.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # pull user context for personalized replies
     profile = db.query(sql_tables.UserProfile).filter(sql_tables.UserProfile.user_id == current_user.user_id).first()
-    recent = db.query(sql_tables.ActivityTracking).filter(
-        sql_tables.ActivityTracking.user_id == current_user.user_id
-    ).order_by(desc(sql_tables.ActivityTracking.date)).first()
     gam = db.query(sql_tables.UserGamification).filter(
         sql_tables.UserGamification.user_id == current_user.user_id
     ).first()
 
-    msg = data.user_message.lower()
-    name = profile.full_name if profile else "there"
-
-    # keyword-based responses (swap this out for a real LLM later)
-    if any(w in msg for w in ["hello", "hi", "hey", "sup"]):
-        reply = f"Hey {name}! How are you feeling today? I'm here to help with your health goals."
-    elif any(w in msg for w in ["step", "walk", "run", "activity"]):
-        if recent:
-            reply = f"Your last activity on {recent.date}: {recent.steps} steps, {recent.calories_burned} cals burned. Keep going!"
-        else:
-            reply = f"No recent activities logged, {name}. Try a short walk today — even 15 minutes helps!"
-    elif any(w in msg for w in ["score", "point", "level", "streak", "badge"]):
-        if gam:
-            reply = f"Level {gam.level} with {gam.total_points} pts! Streak: {gam.current_streak_days} days (best: {gam.longest_streak_days})."
-        else:
-            reply = "Start logging activities to earn points and level up!"
-    elif any(w in msg for w in ["sleep", "tired", "rest"]):
-        reply = f"Sleep is crucial, {name}. Aim for 7-9 hours and reduce screen time before bed."
-    elif any(w in msg for w in ["water", "hydrat", "drink"]):
-        reply = f"Aim for about 2L of water daily, {name}. Keep a bottle at your desk as a reminder."
-    elif any(w in msg for w in ["stress", "anxious", "worried"]):
-        reply = f"Try a breathing exercise: in for 4s, hold 4s, out for 6s. It genuinely helps, {name}."
-    elif any(w in msg for w in ["diet", "food", "eat", "nutrition", "calorie"]):
-        reply = f"Focus on whole foods and protein with every meal, {name}. Veggies are your best friend."
-    elif any(w in msg for w in ["goal", "target"]):
-        reply = f"Head to the Goals section to set targets. I'll help track your progress, {name}!"
-    elif any(w in msg for w in ["motivat", "inspire"]):
-        reply = f"Consistency beats intensity, {name}. Every small step counts!"
-    elif any(w in msg for w in ["weight", "bmi", "body"]):
-        if profile and profile.weight_kg and profile.height_cm:
-            bmi = round(float(profile.weight_kg) / (float(profile.height_cm) / 100) ** 2, 1)
-            reply = f"Your BMI is roughly {bmi}. Remember it's just one metric — how you feel matters more!"
-        else:
-            reply = "Update your profile with height and weight and I can calculate your BMI."
-    else:
-        reply = f"I can help with activity, nutrition, sleep, hydration, stress, and goals. What's on your mind, {name}?"
+    reply = _build_chatbot_reply(db, current_user.user_id, data.user_message, profile, gam)
 
     convo = sql_tables.ChatbotConversation(
         user_id=current_user.user_id,
         user_message=data.user_message,
         bot_response=reply,
-        context_data={"profile_name": name, "level": gam.level if gam else 1}
+        context_data={"profile_name": profile.full_name if profile else None, "level": gam.level if gam else 1}
     )
     db.add(convo)
     db.commit()
