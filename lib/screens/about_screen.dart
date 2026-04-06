@@ -23,6 +23,8 @@ class AboutScreen extends StatelessWidget {
                   SizedBox(height: 120),
                   TeamSection(),
                   SizedBox(height: 120),
+                  LineManagerSection(), 
+                  SizedBox(height: 120),
                   StatsSection(),
                   Footer(),
                 ],
@@ -322,54 +324,95 @@ class TeamSection extends StatelessWidget {
             children: [
               TeamCard(
                 "Isaias Thomas Biju",
-                "Project Lead & Scrum Master",
+                "Project Lead & Frontend Developer",
                 "Aspiring software engineer with a passion for health tech and agile methodologies.",
                 [Color(0xFFFF5FA2), Color(0xFFFF8A00)],
               ),
               TeamCard(
                 "Ali Khosroshahi",
-                "Coding Lead and Backend Architect",
-                "Former Google PM passionate about inclusive design and accessibility.",
+                "Technical Lead & Backend Architect",
+                "Backend developer skilled in building scalable, secure health apps.",
                 [Color(0xFF6A5CFF), Color(0xFF5F9CFF)],
               ),
               TeamCard(
-                "Jordan Kim",
-                "Lead Engineer",
-                "Full-stack engineer committed to building secure, scalable health tech.",
+                "Isha Venkateswaran",
+                "Database Lead & Usability Analyst",
+                "Experienced data systems manager, and competent in enhancing user experience.",
                 [Color(0xFF00C9A7), Color(0xFF007CF0)],
               ),
               TeamCard(
-                "Jordan Kim",
-                "Lead Engineer",
-                "Full-stack engineer committed to building secure, scalable health tech.",
-                [Color(0xFF00C9A7), Color(0xFF007CF0)],
+                "Ahmed Khan",
+                "DB Developer & Project Evaluator",
+                "Loves building databases and evaluating project outcomes.",
+                [Color(0xFF43E97B), Color(0xFF38F9D7)],
               ),
               TeamCard(
-                "Jordan Kim",
-                "Lead Engineer",
-                "Full-stack engineer committed to building secure, scalable health tech.",
-                [Color(0xFF00C9A7), Color(0xFF007CF0)],
+                "Adhil Mohamed",
+                "UI Specialist & Graphic Designer",
+                "Artist at heart, crafting intuitive prototypes and impactful health tech ads.",
+                [Color(0xFF56CCF2), Color(0xFF2F80ED)],
               ),
               TeamCard(
-                "Jordan Kim",
-                "Lead Engineer",
-                "Full-stack engineer committed to building secure, scalable health tech.",
-                [Color(0xFF00C9A7), Color(0xFF007CF0)],
+                "Vanessa Mugambi",
+                "Marketing Lead & Team Reporter",
+                "Forward thinking leader in marketing and communicator for team progress.",
+                [Color(0xFF7F7FD5), Color(0xFF86A8E7)],
               ),
               TeamCard(
-                "Jordan Kim",
-                "Lead Engineer",
-                "Full-stack engineer committed to building secure, scalable health tech.",
-                [Color(0xFF00C9A7), Color(0xFF007CF0)],
+                "Adham Ouf",
+                "Software Architect & Risk Manager",
+                "Skilled in designing systems and managing project risks.",
+                [Color(0xFF11998E), Color(0xFF38EF7D)],
               ),
               TeamCard(
-                "Jordan Kim",
-                "Lead Engineer",
-                "Full-stack engineer committed to building secure, scalable health tech.",
-                [Color(0xFF00C9A7), Color(0xFF007CF0)],
+                "Sazi Dlamini",
+                "Risk Analyst",
+                "Focused on identifying and mitigating project risks to ensure success.",
+                [Color(0xFF667EEA), Color(0xFF764BA2)],
               ),
             ],
           )
+        ],
+      ),
+    );
+  }
+}
+
+class LineManagerSection extends StatelessWidget {
+  const LineManagerSection({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 120),
+      child: Column(
+        children: const [
+          Text(
+            "Line Manager",
+            style: TextStyle(
+              fontSize: 40,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1F2937),
+            ),
+          ),
+          SizedBox(height: 12),
+          Text(
+            "Guiding leadership and oversight for Dubai Group 2's F29SO Software Engineering Project",
+            style: TextStyle(
+              fontSize: 18,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+          SizedBox(height: 50),
+
+          Center(
+            child: TeamCard(
+              "Prof. Hani Ragab Hassen",
+              "Professor at Heriot-Watt University",
+              "Cybersecurity Data Scientist, Director of the Institute of Applied Information Security, Researcher, and Educator.",
+              [Color.fromARGB(255, 246, 23, 23), Color.fromARGB(255, 251, 157, 106)],
+            ),
+          ),
         ],
       ),
     );
@@ -464,7 +507,7 @@ class StatsSection extends StatelessWidget {
       child: const Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          StatItem("2020", "Founded"),
+          StatItem("2026", "Founded"),
           StatItem("50K+", "Active Users"),
           StatItem("25+", "Team Members"),
           StatItem("15", "Countries"),

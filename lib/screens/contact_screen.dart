@@ -153,8 +153,8 @@ class ContactInfoColumn extends StatelessWidget {
           colors: [Color(0xFFFF5FA2), Color(0xFFFF8A00)],
           title: "Email",
           lines: [
-            "hello@creation.health",
-            "support@creation.health",
+            "origininc@gmail.com",
+            "supportcreation@gmail.com",
           ],
         ),
         SizedBox(height: 40),
@@ -163,8 +163,8 @@ class ContactInfoColumn extends StatelessWidget {
           colors: [Color(0xFF00C853), Color(0xFF00BFA6)],
           title: "Phone",
           lines: [
-            "+1 (555) 123-4567",
-            "Mon–Fri 9am–6pm EST",
+            "+971 52 812 3735",
+            "Mon–Fri 9am–6pm GST",
           ],
         ),
         SizedBox(height: 40),
@@ -173,9 +173,9 @@ class ContactInfoColumn extends StatelessWidget {
           colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
           title: "Office",
           lines: [
-            "123 Wellness Street",
-            "San Francisco, CA 94102",
-            "United States",
+            "Heriot-Watt University, Dubai Campus",
+            "Dubai Knowledge Park, PO Box: 38103",
+            "Dubai, United Arab Emirates",
           ],
         ),
       ],
@@ -264,14 +264,14 @@ class ContactFormCard extends StatelessWidget {
               Expanded(
                 child: CustomInput(
                   label: "Your Name",
-                  hint: "John Doe",
+                  hint: "Donald Trump",
                 ),
               ),
               SizedBox(width: 30),
               Expanded(
                 child: CustomInput(
                   label: "Email Address",
-                  hint: "john@example.com",
+                  hint: "potus@gmail.com",
                 ),
               ),
             ],
