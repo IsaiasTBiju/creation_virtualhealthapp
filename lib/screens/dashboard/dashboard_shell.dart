@@ -78,32 +78,37 @@ class _DashboardShellState extends State<DashboardShell> {
 
   // check if user earned a new badge after an action
   Future<void> _checkForNewBadges() async {
-    final token = await AppSession.getToken();
-    if (token == null) return;
-    final badges = await ApiService.getBadges(token);
-    if (badges.length > _lastBadgeCount && _lastBadgeCount > 0) {
-      final newest = badges.last;
-      final badgeName = newest['badge_name']?.toString() ?? 'Badge';
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.emoji_events, color: Color(0xFFFFD700), size: 24),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Badge unlocked: $badgeName!',
-                    style: const TextStyle(fontWeight: FontWeight.w600))),
-              ],
+    try {
+      final token = await AppSession.getToken();
+      if (token == null) return;
+      final badges = await ApiService.getBadges(token);
+      if (badges.length > _lastBadgeCount && _lastBadgeCount > 0) {
+        final newest = badges.last;
+        final badgeName = newest['badge_name']?.toString() ?? 'Badge';
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.emoji_events, color: Color(0xFFFFD700), size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('Achievement unlocked: $badgeName!',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15))),
+                ],
+              ),
+              backgroundColor: const Color(0xFF1E293B),
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            backgroundColor: const Color(0xFF1E293B),
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
+          );
+        }
       }
+      _lastBadgeCount = badges.length;
+    } catch (e) {
+      // silently fail
     }
-    _lastBadgeCount = badges.length;
   }
 
   // --- Load data from backend on startup ---
@@ -425,7 +430,7 @@ class _DashboardShellState extends State<DashboardShell> {
       ChatbotScreen(palette: palette),
       MessagesScreen(palette: palette),
       SocialHubScreen(palette: palette),
-      AchievementsScreen(palette: palette),
+      AchievementsScreen(palette: palette, refreshKey: ValueKey(selectedIndex == 10 ? DateTime.now().millisecondsSinceEpoch : 0)),
       JournalScreen(palette: palette),
       const BrainGamesScreen(),
       ReportsScreen(palette: palette),
@@ -436,54 +441,131 @@ class _DashboardShellState extends State<DashboardShell> {
     return Scaffold(
       body: Row(
         children: [
+          // sidebar
           Container(
-            width: 260,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F3F7),
-              border: const Border(
-                right: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+            width: 270,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF1E1B2E), Color(0xFF2D2640)],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 12,
-                  offset: const Offset(2, 0),
-                ),
-              ],
             ),
             child: Column(
               children: [
-                const SizedBox(height: 40),
-                Text(
-                  "Creation",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: palette.sidebarBrandTitle,
+                const SizedBox(height: 32),
+                // brand
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.favorite, color: palette.colorBlind ? CreationPalette.cbBlue : const Color(0xFFA78BFA), size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text("Creation", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
+                // user card
+                FutureBuilder<String?>(
+                  future: AppSession.displayName(),
+                  builder: (ctx, snap) {
+                    final name = snap.data ?? 'User';
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.07),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: const Color(0xFFA78BFA).withOpacity(0.3),
+                            child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                                const Text('Wellness member', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                // nav items
                 Expanded(
                   child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 16),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _navItem(Icons.dashboard, "Dashboard", 0, palette),
-                        _navItem(Icons.favorite, "Fitness Tracking", 1, palette),
+                        _navLabel('Main'),
+                        _navItem(Icons.dashboard_rounded, "Dashboard", 0, palette),
+                        _navItem(Icons.favorite_rounded, "Fitness", 1, palette),
                         _navItem(Icons.self_improvement, "Wellness", 2, palette),
-                        _navItem(Icons.restaurant, "Nutrition", 3, palette),
-                        _navItem(Icons.medication, "Medications", 4, palette),
-                        _navItem(Icons.monitor_heart, "Biometrics", 5, palette),
-                        _navItem(Icons.calendar_month, "Appointments", 6, palette),
-                        _navItem(Icons.smart_toy_outlined, "AI Companion", 7, palette),
-                        _navItem(Icons.chat_bubble_outline, "Messages", 8, palette),
-                        _navItem(Icons.people, "Social Hub", 9, palette),
-                        _navItem(Icons.emoji_events, "Achievements", 10, palette),
-                        _navItem(Icons.book, "Journal", 11, palette),
-                        _navItem(Icons.videogame_asset, "Brain Games", 12, palette),
-                        _navItem(Icons.assessment, "Health Reports", 13, palette),
-                        _navItem(Icons.person, "Profile", 14, palette),
-                        _navItem(Icons.settings, "Settings", 15, palette),
+                        _navItem(Icons.restaurant_rounded, "Nutrition", 3, palette),
+                        const SizedBox(height: 8),
+                        _navLabel('Health'),
+                        _navItem(Icons.medication_rounded, "Medications", 4, palette),
+                        _navItem(Icons.monitor_heart_rounded, "Biometrics", 5, palette),
+                        _navItem(Icons.calendar_month_rounded, "Appointments", 6, palette),
+                        _navItem(Icons.assessment_rounded, "Health Reports", 13, palette),
+                        const SizedBox(height: 8),
+                        _navLabel('Social'),
+                        _navItem(Icons.smart_toy_rounded, "AI Companion", 7, palette),
+                        _navItem(Icons.chat_bubble_rounded, "Messages", 8, palette),
+                        _navItem(Icons.people_rounded, "Social Hub", 9, palette),
+                        _navItem(Icons.emoji_events_rounded, "Achievements", 10, palette),
+                        const SizedBox(height: 8),
+                        _navLabel('Personal'),
+                        _navItem(Icons.book_rounded, "Journal", 11, palette),
+                        _navItem(Icons.videogame_asset_rounded, "Brain Games", 12, palette),
+                        _navItem(Icons.person_rounded, "Profile", 14, palette),
+                        _navItem(Icons.settings_rounded, "Settings", 15, palette),
                       ],
+                    ),
+                  ),
+                ),
+                // sign out
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: InkWell(
+                    onTap: () async {
+                      await AppSession.signOut();
+                      if (!mounted) return;
+                      Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.logout_rounded, color: Colors.white38, size: 20),
+                          SizedBox(width: 12),
+                          Text('Sign out', style: TextStyle(color: Colors.white38, fontSize: 14)),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -493,7 +575,7 @@ class _DashboardShellState extends State<DashboardShell> {
 
           Expanded(
             child: Container(
-              color: const Color.fromARGB(255, 248, 249, 251),
+              color: const Color(0xFFF8F9FB),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 1400),
@@ -511,29 +593,39 @@ class _DashboardShellState extends State<DashboardShell> {
     );
   }
 
+  Widget _navLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 8, 16, 6),
+      child: Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white24, letterSpacing: 1)),
+    );
+  }
+
   Widget _navItem(IconData icon, String label, int index, CreationPalette palette) {
     final isSelected = selectedIndex == index;
+    final accent = palette.colorBlind ? CreationPalette.cbBlue : const Color(0xFFA78BFA);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
       child: InkWell(
         onTap: () => setState(() => selectedIndex = index),
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
           decoration: BoxDecoration(
-            color: isSelected ? palette.navSelectedBackground : Colors.transparent,
+            color: isSelected ? accent.withOpacity(0.15) : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
+            border: isSelected ? Border.all(color: accent.withOpacity(0.3), width: 1) : null,
           ),
           child: Row(
             children: [
-              Icon(icon, color: isSelected ? Colors.white : Colors.black),
+              Icon(icon, color: isSelected ? accent : Colors.white38, size: 20),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   label,
                   style: TextStyle(
-                    fontSize: 15,
-                    color: isSelected ? Colors.white : Colors.black,
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected ? Colors.white : Colors.white60,
                   ),
                 ),
               ),

@@ -24,24 +24,7 @@ class JournalScreen extends StatefulWidget {
 }
 
 class _JournalScreenState extends State<JournalScreen> {
-  final List<JournalEntry> _entries = [
-    JournalEntry(
-      date: DateTime.now().subtract(const Duration(days: 1)),
-      title: "Felt strong after my run",
-      body:
-          "Short session today but energy was high. Want to keep this rhythm through the week.",
-    ),
-    JournalEntry(
-      date: DateTime.now().subtract(const Duration(days: 3)),
-      title: "Sleep note",
-      body: "Earlier bedtime helped. Woke up once—still better than average.",
-    ),
-    JournalEntry(
-      date: DateTime.now().subtract(const Duration(days: 5)),
-      title: "Gratitude",
-      body: "Grateful for clear skies on my walk. Small wins matter.",
-    ),
-  ];
+  final List<JournalEntry> _entries = [];
 
   final _titleCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();

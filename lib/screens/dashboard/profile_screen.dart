@@ -5,6 +5,8 @@ import '../../app_session.dart';
 import '../../api_service.dart';
 import '../../creation_palette.dart';
 
+import '../../widgets/avatar_widget.dart';
+
 class ProfileScreen extends StatefulWidget {
   final CreationPalette palette;
 
@@ -111,7 +113,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
-        _primaryButton("Edit profile", _openEdit),
       ],
     );
   }
@@ -166,7 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white30, width: 2),
             ),
-            child: const Icon(Icons.person, size: 48, color: Colors.white),
+            child: const ClipOval(child: UserAvatar(size: 84)),
           ),
           const SizedBox(width: 24),
           Expanded(
@@ -268,15 +269,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _editProfile() {
     final nameCtrl = TextEditingController(text: _name);
     final ageCtrl = TextEditingController(text: '$_age');
+    final genderCtrl = TextEditingController(text: _gender);
     final heightCtrl = TextEditingController(text: '${_heightCm.round()}');
     final weightCtrl = TextEditingController(text: _weightKg.toStringAsFixed(1));
-    String gender = _gender;
-    // normalize gender to match dropdown options
-    const genderOptions = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
-    String genderValue = genderOptions.firstWhere(
-      (g) => g.toLowerCase() == gender.toLowerCase(),
-      orElse: () => 'Prefer not to say',
-    );
 
     showDialog(
       context: context,
@@ -292,14 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 12),
               TextField(controller: ageCtrl, decoration: const InputDecoration(labelText: 'Age'), keyboardType: TextInputType.number),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: genderValue,
-                decoration: const InputDecoration(labelText: 'Gender'),
-                items: genderOptions
-                    .map((g) => DropdownMenuItem(value: g, child: Text(g)))
-                    .toList(),
-                onChanged: (v) => gender = v ?? gender,
-              ),
+              TextField(controller: genderCtrl, decoration: const InputDecoration(labelText: 'Gender')),
               const SizedBox(height: 12),
               TextField(controller: heightCtrl, decoration: const InputDecoration(labelText: 'Height (cm)'), keyboardType: TextInputType.number),
               const SizedBox(height: 12),
@@ -317,7 +305,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               final body = <String, dynamic>{
                 'full_name': nameCtrl.text.trim(),
                 'age': int.tryParse(ageCtrl.text.trim()) ?? _age,
-                'gender': gender,
+                'gender': genderCtrl.text.trim(),
                 'height_cm': double.tryParse(heightCtrl.text.trim()) ?? _heightCm,
                 'weight_kg': double.tryParse(weightCtrl.text.trim()) ?? _weightKg,
               };
@@ -373,35 +361,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _goalsCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Health goals",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
-            ),
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _loadGamification(),
+      builder: (ctx, snap) {
+        final gam = snap.data;
+        final points = gam?['total_points'] ?? 0;
+        final streak = gam?['current_streak_days'] ?? 0;
+        final level = gam?['level'] ?? 1;
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: _cardDecoration(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Progress", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+              const SizedBox(height: 8),
+              Text("Your current activity and wellness progress.", style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+              const SizedBox(height: 20),
+              _goalLine("Level progress", (points % 100) / 100.0, "$points / ${(level) * 100} pts to next level"),
+              const SizedBox(height: 16),
+              _goalLine("Current streak", streak >= 7 ? 1.0 : streak / 7.0, "$streak / 7 days"),
+              const SizedBox(height: 16),
+              _goalLine("Points earned", points > 0 ? (points / 500.0).clamp(0.0, 1.0) : 0.0, "$points total points"),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            "Stay consistent with movement, sleep, and mindfulness.",
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 20),
-          _goalLine("Weekly active minutes", 0.72, "108 / 150"),
-          const SizedBox(height: 16),
-          _goalLine("Sleep consistency", 0.55, "4 / 7 nights"),
-          const SizedBox(height: 16),
-          _goalLine("Mindfulness sessions", 0.80, "4 / 5 goal"),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  Future<Map<String, dynamic>?> _loadGamification() async {
+    final token = await AppSession.getToken();
+    if (token == null) return null;
+    return await ApiService.getMap(token, 'gamification');
   }
 
   Widget _goalLine(String label, double value, String caption) {
@@ -461,17 +455,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final nameCtrl = TextEditingController(text: _name);
     final emailCtrl = TextEditingController(text: _email);
     final ageCtrl = TextEditingController(text: _age.toString());
-    String gender = _gender;
+    final genderCtrl = TextEditingController(text: _gender);
     final heightCtrl = TextEditingController(text: _heightCm.round().toString());
     final weightCtrl = TextEditingController(text: _weightKg.toStringAsFixed(1));
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setLocal) {
+      builder: (context) {
           return Dialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: SizedBox(
@@ -480,13 +472,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Edit profile",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                    const Text("Edit profile", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 20),
                     _dialogField("Full name", nameCtrl),
                     const SizedBox(height: 12),
@@ -494,21 +480,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 12),
                     _dialogField("Age", ageCtrl, number: true),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: gender,
-                      decoration: _inputDeco("Gender"),
-                      items: const [
-                        "Female",
-                        "Male",
-                        "Non-binary",
-                        "Prefer not to say",
-                      ]
-                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                          .toList(),
-                      onChanged: (v) {
-                        if (v != null) setLocal(() => gender = v);
-                      },
-                    ),
+                    _dialogField("Gender", genderCtrl),
                     const SizedBox(height: 12),
                     _dialogField("Height (cm)", heightCtrl, number: true),
                     const SizedBox(height: 12),
@@ -519,26 +491,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: GestureDetector(
                         onTap: () async {
                           final nav = Navigator.of(context);
-                          final newName = nameCtrl.text.trim().isEmpty
-                              ? _name
-                              : nameCtrl.text.trim();
-                          final newEmail = emailCtrl.text.trim().isEmpty
-                              ? _email
-                              : emailCtrl.text.trim();
                           setState(() {
-                            _name = newName;
-                            _email = newEmail;
+                            _name = nameCtrl.text.trim().isEmpty ? _name : nameCtrl.text.trim();
+                            _email = emailCtrl.text.trim().isEmpty ? _email : emailCtrl.text.trim();
                             _age = int.tryParse(ageCtrl.text) ?? _age;
-                            _gender = gender;
-                            _heightCm =
-                                double.tryParse(heightCtrl.text) ?? _heightCm;
-                            _weightKg =
-                                double.tryParse(weightCtrl.text) ?? _weightKg;
+                            _gender = genderCtrl.text.trim();
+                            _heightCm = double.tryParse(heightCtrl.text) ?? _heightCm;
+                            _weightKg = double.tryParse(weightCtrl.text) ?? _weightKg;
                           });
+                          // save to local session
                           final p = await SharedPreferences.getInstance();
-                          await p.setString(
-                              AppSession.keyDisplayName, _name);
+                          await p.setString(AppSession.keyDisplayName, _name);
                           await p.setString(AppSession.keyUserEmail, _email);
+                          // save to backend
+                          final token = await AppSession.getToken();
+                          if (token != null) {
+                            await ApiService.putData(token, 'profile', {
+                              'full_name': _name,
+                              'age': _age,
+                              'gender': _gender,
+                              'height_cm': _heightCm,
+                              'weight_kg': _weightKg,
+                            });
+                          }
                           if (!mounted) return;
                           nav.pop();
                         },
@@ -569,7 +544,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           );
         },
-      ),
     );
   }
 

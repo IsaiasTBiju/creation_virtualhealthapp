@@ -1102,3 +1102,175 @@ def search_users(
             "is_following": is_following,
         })
     return result
+
+
+# --- Friend requests ---
+
+@app.post("/friend-requests")
+def send_friend_request(
+    data: api_shapes.FriendRequestCreate,
+    current_user: sql_tables.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if data.to_user_id == current_user.user_id:
+        raise HTTPException(status_code=400, detail="Cannot send request to yourself")
+    existing = db.query(sql_tables.FriendRequest).filter(
+        sql_tables.FriendRequest.from_user_id == current_user.user_id,
+        sql_tables.FriendRequest.to_user_id == data.to_user_id,
+        sql_tables.FriendRequest.status == "pending"
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Request already pending")
+    already_friends = db.query(sql_tables.UserFollow).filter(
+        sql_tables.UserFollow.follower_id == current_user.user_id,
+        sql_tables.UserFollow.following_id == data.to_user_id
+    ).first()
+    if already_friends:
+        raise HTTPException(status_code=400, detail="Already friends")
+    req = sql_tables.FriendRequest(from_user_id=current_user.user_id, to_user_id=data.to_user_id)
+    db.add(req)
+    db.commit()
+    db.refresh(req)
+    return {"detail": "Friend request sent", "request_id": req.request_id}
+
+@app.get("/friend-requests/incoming")
+def get_incoming_requests(
+    current_user: sql_tables.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    reqs = db.query(sql_tables.FriendRequest).filter(
+        sql_tables.FriendRequest.to_user_id == current_user.user_id,
+        sql_tables.FriendRequest.status == "pending"
+    ).all()
+    result = []
+    for r in reqs:
+        profile = db.query(sql_tables.UserProfile).filter(sql_tables.UserProfile.user_id == r.from_user_id).first()
+        result.append({
+            "request_id": r.request_id,
+            "from_user_id": r.from_user_id,
+            "from_name": profile.full_name if profile else f"User {r.from_user_id}",
+            "status": r.status,
+            "created_at": str(r.created_at),
+        })
+    return result
+
+@app.get("/friend-requests/outgoing")
+def get_outgoing_requests(
+    current_user: sql_tables.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    reqs = db.query(sql_tables.FriendRequest).filter(
+        sql_tables.FriendRequest.from_user_id == current_user.user_id,
+        sql_tables.FriendRequest.status == "pending"
+    ).all()
+    result = []
+    for r in reqs:
+        profile = db.query(sql_tables.UserProfile).filter(sql_tables.UserProfile.user_id == r.to_user_id).first()
+        result.append({
+            "request_id": r.request_id,
+            "to_user_id": r.to_user_id,
+            "to_name": profile.full_name if profile else f"User {r.to_user_id}",
+            "status": r.status,
+            "created_at": str(r.created_at),
+        })
+    return result
+
+@app.put("/friend-requests/{request_id}/accept")
+def accept_friend_request(
+    request_id: int,
+    current_user: sql_tables.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    req = db.query(sql_tables.FriendRequest).filter(
+        sql_tables.FriendRequest.request_id == request_id,
+        sql_tables.FriendRequest.to_user_id == current_user.user_id,
+        sql_tables.FriendRequest.status == "pending"
+    ).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+    req.status = "accepted"
+    for a, b in [(req.from_user_id, req.to_user_id), (req.to_user_id, req.from_user_id)]:
+        existing = db.query(sql_tables.UserFollow).filter(
+            sql_tables.UserFollow.follower_id == a, sql_tables.UserFollow.following_id == b
+        ).first()
+        if not existing:
+            db.add(sql_tables.UserFollow(follower_id=a, following_id=b))
+    db.commit()
+    return {"detail": "Friend request accepted"}
+
+@app.put("/friend-requests/{request_id}/reject")
+def reject_friend_request(
+    request_id: int,
+    current_user: sql_tables.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    req = db.query(sql_tables.FriendRequest).filter(
+        sql_tables.FriendRequest.request_id == request_id,
+        sql_tables.FriendRequest.to_user_id == current_user.user_id,
+        sql_tables.FriendRequest.status == "pending"
+    ).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+    req.status = "rejected"
+    db.commit()
+    return {"detail": "Friend request rejected"}
+
+@app.get("/friends")
+def get_friends(
+    current_user: sql_tables.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    following = db.query(sql_tables.UserFollow).filter(sql_tables.UserFollow.follower_id == current_user.user_id).all()
+    friends = []
+    for f in following:
+        mutual = db.query(sql_tables.UserFollow).filter(
+            sql_tables.UserFollow.follower_id == f.following_id,
+            sql_tables.UserFollow.following_id == current_user.user_id
+        ).first()
+        if mutual:
+            profile = db.query(sql_tables.UserProfile).filter(sql_tables.UserProfile.user_id == f.following_id).first()
+            friends.append({
+                "user_id": f.following_id,
+                "display_name": profile.full_name if profile else f"User {f.following_id}",
+            })
+    return friends
+
+
+# get all users you have message history with
+@app.get("/messages/conversations")
+def get_conversations(
+    current_user: sql_tables.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # find all unique users we've exchanged messages with
+    sent = db.query(sql_tables.Message.receiver_id).filter(
+        sql_tables.Message.sender_id == current_user.user_id
+    ).distinct().all()
+    received = db.query(sql_tables.Message.sender_id).filter(
+        sql_tables.Message.receiver_id == current_user.user_id
+    ).distinct().all()
+
+    user_ids = set()
+    for (uid,) in sent:
+        user_ids.add(uid)
+    for (uid,) in received:
+        user_ids.add(uid)
+
+    result = []
+    for uid in user_ids:
+        profile = db.query(sql_tables.UserProfile).filter(sql_tables.UserProfile.user_id == uid).first()
+        user = db.query(sql_tables.User).filter(sql_tables.User.user_id == uid).first()
+        # get last message
+        last_msg = db.query(sql_tables.Message).filter(
+            ((sql_tables.Message.sender_id == current_user.user_id) & (sql_tables.Message.receiver_id == uid)) |
+            ((sql_tables.Message.sender_id == uid) & (sql_tables.Message.receiver_id == current_user.user_id))
+        ).order_by(desc(sql_tables.Message.sent_at)).first()
+
+        result.append({
+            "user_id": uid,
+            "display_name": profile.full_name if profile else (user.email if user else f"User {uid}"),
+            "role": user.role if user else "User",
+            "last_message": last_msg.message_content if last_msg else None,
+            "last_message_at": str(last_msg.sent_at) if last_msg else None,
+        })
+    return sorted(result, key=lambda x: x['last_message_at'] or '', reverse=True)

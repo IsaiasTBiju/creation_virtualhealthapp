@@ -342,3 +342,20 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+# --- Friend requests ---
+
+class FriendRequestCreate(BaseModel):
+    to_user_id: int
+
+class FriendRequestResponse(BaseModel):
+    request_id: int
+    from_user_id: int
+    to_user_id: int
+    status: str
+    from_name: Optional[str] = None
+    to_name: Optional[str] = None
+    created_at: datetime
+    class Config:
+        from_attributes = True

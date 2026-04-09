@@ -31,8 +31,9 @@ const Map<String, IconData> _badgeIcons = {
 
 class AchievementsScreen extends StatefulWidget {
   final CreationPalette palette;
+  final Key? refreshKey; // change this to force reload
 
-  const AchievementsScreen({super.key, required this.palette});
+  const AchievementsScreen({super.key, required this.palette, this.refreshKey});
 
   @override
   State<AchievementsScreen> createState() => _AchievementsScreenState();
@@ -48,6 +49,13 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void didUpdateWidget(covariant AchievementsScreen old) {
+    super.didUpdateWidget(old);
+    // reload when refreshKey changes (tab selected)
+    if (widget.refreshKey != old.refreshKey) _loadData();
   }
 
   Future<void> _loadData() async {
@@ -147,39 +155,31 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   }
 
   Widget _summaryRow(int unlocked) {
-    return Row(
+    // coins = 25 per badge earned
+    final coins = unlocked * 25;
+    return Wrap(
+      spacing: 20,
+      runSpacing: 20,
       children: [
-        Expanded(
-          child: _statCard(
-            "Level",
-            "$_level",
-            "$_points total points",
-            Icons.military_tech,
-            const Color(0xFFEFF6FF),
-            const Color(0xFF2563EB),
-          ),
+        SizedBox(
+          width: 220,
+          child: _statCard("Level", "$_level", "$_points total points",
+              Icons.military_tech, const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
         ),
-        const SizedBox(width: 20),
-        Expanded(
-          child: _statCard(
-            "Current streak",
-            "$_streak days",
-            "Keep it going",
-            Icons.bolt,
-            const Color(0xFFFFF7ED),
-            const Color(0xFFF97316),
-          ),
+        SizedBox(
+          width: 220,
+          child: _statCard("Current streak", "$_streak days", "Keep it going",
+              Icons.bolt, const Color(0xFFFFF7ED), const Color(0xFFF97316)),
         ),
-        const SizedBox(width: 20),
-        Expanded(
-          child: _statCard(
-            "Badges earned",
-            "$unlocked / ${_badges.length}",
-            "Collect them all",
-            Icons.workspace_premium,
-            widget.palette.summaryIconBackground,
-            widget.palette.accentDeepPurple,
-          ),
+        SizedBox(
+          width: 220,
+          child: _statCard("Badges earned", "$unlocked / ${_badges.length}", "Collect them all",
+              Icons.workspace_premium, widget.palette.summaryIconBackground, widget.palette.accentDeepPurple),
+        ),
+        SizedBox(
+          width: 220,
+          child: _statCard("Coins", "$coins", "Earn by unlocking badges",
+              Icons.monetization_on, const Color(0xFFFFF7ED), const Color(0xFFEAB308)),
         ),
       ],
     );
@@ -254,6 +254,10 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   }
 
   Widget _weeklyChallenge() {
+    // use real points progress
+    final progress = _points > 0 ? (_points % 100) / 100.0 : 0.0;
+    final target = (_level) * 100;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -276,43 +280,23 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Weekly challenge",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                const Text("Level up challenge", style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
-                const Text(
-                  "Complete 150 active minutes before Sunday",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                Text("Earn $target points to reach Level ${_level + 1}",
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: LinearProgressIndicator(
-                    value: 0.62,
+                    value: progress.clamp(0.0, 1.0),
                     minHeight: 8,
                     backgroundColor: Colors.white24,
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  "93 / 150 minutes",
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                Text("$_points / $target points",
+                    style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13, fontWeight: FontWeight.w500)),
               ],
             ),
           ),

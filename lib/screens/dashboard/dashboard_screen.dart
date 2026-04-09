@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../creation_palette.dart';
 // Bring in the model types you already use in other screens
@@ -61,38 +62,45 @@ class DashboardScreen extends StatelessWidget {
 
   // HEADER
   Widget _header() {
-    return Row(
-      children: [
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Welcome back!",
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF111827),
-                ),
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+    return FutureBuilder<String?>(
+      future: SharedPreferences.getInstance().then((p) => p.getString('displayName')),
+      builder: (ctx, snap) {
+        final name = snap.data ?? '';
+        return Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name.isNotEmpty ? "$greeting, ${name.split(' ').first}" : greeting,
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Here's your wellness summary for today.",
+                    style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
+                  ),
+                ],
               ),
-              SizedBox(height: 6),
-              Text(
-                "Here's your wellness summary:",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF6B7280),
-                ),
+            ),
+            FilledButton.icon(
+              onPressed: onOpenAppointments,
+              icon: const Icon(Icons.calendar_month_outlined, size: 18),
+              label: const Text('Book Appointment'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF7C3AED),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               ),
-            ],
-          ),
-        ),
-        FilledButton.icon(
-          onPressed: onOpenAppointments,
-          icon: const Icon(Icons.calendar_month_outlined),
-          label: const Text('Book Appointment'),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 

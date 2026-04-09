@@ -359,3 +359,16 @@ class AuditLog(Base):
     created_at = Column(DateTime, default=func.now(), index=True)
 
     user = relationship("User")
+
+# ================================================
+# 21. FRIEND REQUESTS TABLE
+# ================================================
+class FriendRequest(Base):
+    __tablename__ = "friend_requests"
+
+    request_id = Column(Integer, primary_key=True, index=True)
+    from_user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), index=True)
+    to_user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), index=True)
+    status = Column(String(20), default="pending")  # pending, accepted, rejected
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

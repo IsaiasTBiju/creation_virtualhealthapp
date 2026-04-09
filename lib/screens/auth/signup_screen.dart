@@ -5,7 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app_preferences.dart';
 import '../../app_session.dart';
-import '../../api_service.dart'; // <-- ADDED THE API SERVICE IMPORT
+import '../../api_service.dart';
+import '../../widgets/avatar_widget.dart';
 
 class SignupFlowScreen extends StatefulWidget {
   final AppPreferences appPrefs;
@@ -27,6 +28,8 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
   final pass = TextEditingController();
   final confirm = TextEditingController();
   final age = TextEditingController();
+  final height = TextEditingController();
+  final weight = TextEditingController();
 
   String gender = "";
   String pronouns = "";
@@ -37,6 +40,7 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
   String hairColor = "Black";
   String eyeColor = "Brown";
   String faceShape = "Oval";
+  String skinTone = "Light";
 
   /// U-FR-1-1: User vs Healthcare Professional
   String accountRole = AppSession.roleMember;
@@ -608,10 +612,13 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
             Text("Create Your Avatar", style: _titleStyle),
             const SizedBox(height: 20),
             Center(
-              child: SizedBox(
-                height: 170,
-                width: 170,
-                child: _avatarPreview(),
+              child: AvatarPreview(
+                size: 170,
+                hairStyle: hairStyle,
+                hairColor: hairColor,
+                eyeColor: eyeColor,
+                faceShape: faceShape,
+                skinTone: skinTone,
               ),
             ),
             const SizedBox(height: 24),
@@ -673,6 +680,18 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
               ],
               faceShape,
               (v) => setState(() => faceShape = v),
+            ),
+            _buildOptionSection(
+              "Skin Tone",
+              [
+                "Light",
+                "Medium",
+                "Tan",
+                "Dark",
+                "Deep",
+              ],
+              skinTone,
+              (v) => setState(() => skinTone = v),
             ),
             const SizedBox(height: 28),
             Align(
@@ -851,7 +870,7 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("How old are you?", style: _titleStyle.copyWith(fontSize: 20)),
+              Text("About you", style: _titleStyle.copyWith(fontSize: 20)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: age,
@@ -861,6 +880,30 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
                   if (v == null || v.trim().isEmpty) return "Please enter your age";
                   final parsed = int.tryParse(v.trim());
                   if (parsed == null || parsed <= 0 || parsed > 120) return "Please enter a valid age";
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: height,
+                keyboardType: TextInputType.number,
+                decoration: _fieldDecoration("Height (cm)", hint: "e.g. 175"),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return "Please enter your height";
+                  final parsed = double.tryParse(v.trim());
+                  if (parsed == null || parsed <= 50 || parsed > 250) return "Please enter a valid height";
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: weight,
+                keyboardType: TextInputType.number,
+                decoration: _fieldDecoration("Weight (kg)", hint: "e.g. 70"),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return "Please enter your weight";
+                  final parsed = double.tryParse(v.trim());
+                  if (parsed == null || parsed <= 20 || parsed > 300) return "Please enter a valid weight";
                   return null;
                 },
               ),
@@ -977,6 +1020,8 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
                               fullName: nameText,
                               age: int.tryParse(age.text.trim()) ?? 0,
                               gender: gender,
+                              heightCm: double.tryParse(height.text.trim()),
+                              weightKg: double.tryParse(weight.text.trim()),
                           );
                       }
 
@@ -987,6 +1032,14 @@ class _SignupFlowScreenState extends State<SignupFlowScreen> {
                         role: accountRole,
                         token: token,
                       );
+
+                      // 5. Save avatar data locally
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('avatar_hair_style', hairStyle);
+                      await prefs.setString('avatar_hair_color', hairColor);
+                      await prefs.setString('avatar_eye_color', eyeColor);
+                      await prefs.setString('avatar_face_shape', faceShape);
+                      await prefs.setString('avatar_skin_tone', skinTone);
                       
                       await widget.appPrefs.setColorBlindMode(colorBlind);
 

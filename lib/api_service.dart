@@ -83,6 +83,8 @@ static Future<String?> loginUser(String email, String password) async {
     required String fullName,
     required int age,
     required String gender,
+    double? heightCm,
+    double? weightKg,
   }) async {
     try {
       final response = await http.post(
@@ -95,8 +97,8 @@ static Future<String?> loginUser(String email, String password) async {
           'full_name': fullName,
           'age': age,
           'gender': gender,
-          'weight_kg': 70.0, 
-          'height_cm': 170.0,
+          'weight_kg': weightKg ?? 0,
+          'height_cm': heightCm ?? 0,
         }),
       );
       
@@ -190,14 +192,25 @@ static Future<String?> loginUser(String email, String password) async {
   // get leaderboard
   static Future<List<dynamic>> getLeaderboard() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/leaderboard'));
+      final token = await _getStoredToken();
+      final headers = token != null ? {'Authorization': 'Bearer $token'} : <String, String>{};
+      final response = await http.get(Uri.parse('$baseUrl/leaderboard'), headers: headers);
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as List<dynamic>;
       }
       return [];
     } catch (e) {
-      print("Leaderboard Exception: $e");
       return [];
+    }
+  }
+
+  // helper to get token without needing AppSession import
+  static Future<String?> _getStoredToken() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      return p.getString('authToken');
+    } catch (e) {
+      return null;
     }
   }
 

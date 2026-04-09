@@ -19,12 +19,13 @@ class _SocialHubScreenState extends State<SocialHubScreen> with SingleTickerProv
   List<Map<String, dynamic>> _following = [];
   List<Map<String, dynamic>> _followers = [];
   List<Map<String, dynamic>> _discover = [];
+  List<Map<String, dynamic>> _incomingRequests = [];
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 4, vsync: this);
+    _tabs = TabController(length: 5, vsync: this);
     _loadAll();
   }
 
@@ -35,44 +36,86 @@ class _SocialHubScreenState extends State<SocialHubScreen> with SingleTickerProv
   }
 
   Future<void> _loadAll() async {
+    try {
+      final token = await AppSession.getToken();
+      final myName = await AppSession.displayName();
+
+      final lb = await ApiService.getLeaderboard();
+      final fing = token != null ? await ApiService.getList(token, 'following') : <dynamic>[];
+      final fers = token != null ? await ApiService.getList(token, 'followers') : <dynamic>[];
+      final disc = token != null ? await ApiService.getList(token, 'users/search?q=') : <dynamic>[];
+      final incoming = token != null ? await ApiService.getList(token, 'friend-requests/incoming') : <dynamic>[];
+
+      if (!mounted) return;
+      setState(() {
+        _leaderboard = lb.map((r) => <String, dynamic>{
+          'rank': r['rank'] ?? 0,
+          'name': r['display_name']?.toString() ?? 'Unknown',
+          'points': r['total_points'] ?? 0,
+          'level': r['level'] ?? 1,
+          'user_id': r['user_id'] ?? 0,
+          'isYou': (r['display_name']?.toString() ?? '') == (myName ?? ''),
+        }).toList();
+
+        _following = fing.map((f) => <String, dynamic>{
+          'user_id': f['user_id'] ?? 0,
+          'name': f['display_name']?.toString() ?? 'Unknown',
+        }).toList();
+
+        _followers = fers.map((f) => <String, dynamic>{
+          'user_id': f['user_id'] ?? 0,
+          'name': f['display_name']?.toString() ?? 'Unknown',
+        }).toList();
+
+        _discover = disc.map((u) => <String, dynamic>{
+          'user_id': u['user_id'] ?? 0,
+          'name': u['full_name']?.toString() ?? u['email']?.toString() ?? 'Unknown',
+          'email': u['email']?.toString() ?? '',
+          'is_following': u['is_following'] == true,
+        }).toList();
+
+        _incomingRequests = incoming.map((r) => <String, dynamic>{
+          'request_id': r['request_id'] ?? 0,
+          'from_user_id': r['from_user_id'] ?? 0,
+          'from_name': r['from_name']?.toString() ?? 'Unknown',
+        }).toList();
+
+        _loading = false;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _sendFriendRequest(int userId) async {
     final token = await AppSession.getToken();
-    final myName = await AppSession.displayName();
+    if (token == null) return;
+    await ApiService.postData(token, 'friend-requests', {'to_user_id': userId});
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Friend request sent!'), behavior: SnackBarBehavior.floating),
+      );
+    }
+    await _loadAll();
+  }
 
-    final lb = await ApiService.getLeaderboard();
-    final fing = token != null ? await ApiService.getList(token, 'following') : [];
-    final fers = token != null ? await ApiService.getList(token, 'followers') : [];
-    final disc = token != null ? await ApiService.getList(token, 'users/search?q=') : [];
+  Future<void> _acceptRequest(int requestId) async {
+    final token = await AppSession.getToken();
+    if (token == null) return;
+    await ApiService.putData(token, 'friend-requests/$requestId/accept');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Friend request accepted!'), behavior: SnackBarBehavior.floating),
+      );
+    }
+    await _loadAll();
+  }
 
-    if (!mounted) return;
-    setState(() {
-      _leaderboard = lb.map((r) => <String, dynamic>{
-        'rank': r['rank'] ?? 0,
-        'name': r['display_name']?.toString() ?? 'Unknown',
-        'points': r['total_points'] ?? 0,
-        'level': r['level'] ?? 1,
-        'user_id': r['user_id'] ?? 0,
-        'isYou': (r['display_name']?.toString() ?? '') == (myName ?? ''),
-      }).toList();
-
-      _following = fing.map((f) => <String, dynamic>{
-        'user_id': f['user_id'] ?? 0,
-        'name': f['display_name']?.toString() ?? 'Unknown',
-      }).toList();
-
-      _followers = fers.map((f) => <String, dynamic>{
-        'user_id': f['user_id'] ?? 0,
-        'name': f['display_name']?.toString() ?? 'Unknown',
-      }).toList();
-
-      _discover = disc.map((u) => <String, dynamic>{
-        'user_id': u['user_id'] ?? 0,
-        'name': u['full_name']?.toString() ?? u['email']?.toString() ?? 'Unknown',
-        'email': u['email']?.toString() ?? '',
-        'is_following': u['is_following'] == true,
-      }).toList();
-
-      _loading = false;
-    });
+  Future<void> _rejectRequest(int requestId) async {
+    final token = await AppSession.getToken();
+    if (token == null) return;
+    await ApiService.putData(token, 'friend-requests/$requestId/reject');
+    await _loadAll();
   }
 
   Future<void> _toggleFollow(int userId, bool currentlyFollowing) async {
@@ -217,6 +260,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> with SingleTickerProv
                 const Tab(text: 'Leaderboard'),
                 Tab(text: 'Following (${_following.length})'),
                 Tab(text: 'Followers (${_followers.length})'),
+                Tab(text: 'Requests (${_incomingRequests.length})'),
                 const Tab(text: 'Discover'),
               ],
             ),
@@ -229,6 +273,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> with SingleTickerProv
                     _leaderboardTab(),
                     _followingTab(),
                     _followersTab(),
+                    _requestsTab(),
                     _discoverTab(),
                   ]),
           ),
@@ -245,9 +290,9 @@ class _SocialHubScreenState extends State<SocialHubScreen> with SingleTickerProv
       itemBuilder: (ctx, i) {
         final r = _leaderboard[i];
         final isYou = r['isYou'] == true;
-        final rank = r['rank'] as int;
+        final rank = (r['rank'] ?? 0) as int;
         return GestureDetector(
-          onTap: () => _showUserProfile(r['user_id'] as int, r['name'] as String),
+          onTap: () => _showUserProfile((r['user_id'] ?? 0) as int, r['name']?.toString() ?? 'Unknown'),
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -275,7 +320,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> with SingleTickerProv
                 const SizedBox(width: 14),
                 CircleAvatar(
                   radius: 18, backgroundColor: _accent.withOpacity(0.12),
-                  child: Text((r['name'] as String)[0].toUpperCase(),
+                  child: Text((r['name']?.toString() ?? 'Unknown')[0].toUpperCase(),
                       style: TextStyle(fontWeight: FontWeight.bold, color: _accent, fontSize: 14)),
                 ),
                 const SizedBox(width: 12),
@@ -283,7 +328,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> with SingleTickerProv
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(isYou ? '${r['name']} (You)' : r['name'] as String,
+                      Text(isYou ? '${r['name']} (You)' : r['name']?.toString() ?? 'Unknown',
                           style: TextStyle(fontWeight: FontWeight.w600, color: isYou ? _accent : const Color(0xFF111827))),
                       Text('Level ${r['level']}', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
                     ],
@@ -305,9 +350,9 @@ class _SocialHubScreenState extends State<SocialHubScreen> with SingleTickerProv
       itemCount: _following.length,
       itemBuilder: (ctx, i) {
         final f = _following[i];
-        return _userTile(f['name'] as String, f['user_id'] as int,
+        return _userTile(f['name']?.toString() ?? 'Unknown', (f['user_id'] ?? 0) as int,
           trailing: TextButton(
-            onPressed: () => _toggleFollow(f['user_id'] as int, true),
+            onPressed: () => _toggleFollow((f['user_id'] ?? 0) as int, true),
             child: const Text('Unfollow', style: TextStyle(color: Color(0xFFEF4444), fontSize: 13)),
           ),
         );
@@ -323,11 +368,11 @@ class _SocialHubScreenState extends State<SocialHubScreen> with SingleTickerProv
       itemBuilder: (ctx, i) {
         final f = _followers[i];
         final alreadyFollowing = _following.any((fol) => fol['user_id'] == f['user_id']);
-        return _userTile(f['name'] as String, f['user_id'] as int,
+        return _userTile(f['name']?.toString() ?? 'Unknown', (f['user_id'] ?? 0) as int,
           trailing: alreadyFollowing
               ? const Chip(label: Text('Following', style: TextStyle(fontSize: 11)), backgroundColor: Color(0xFFE5E7EB))
               : TextButton(
-                  onPressed: () => _toggleFollow(f['user_id'] as int, false),
+                  onPressed: () => _toggleFollow((f['user_id'] ?? 0) as int, false),
                   child: Text('Follow back', style: TextStyle(color: _accent, fontSize: 13)),
                 ),
         );
@@ -343,20 +388,55 @@ class _SocialHubScreenState extends State<SocialHubScreen> with SingleTickerProv
       itemBuilder: (ctx, i) {
         final u = _discover[i];
         final isFollowing = u['is_following'] == true;
-        return _userTile(u['name'] as String, u['user_id'] as int,
-          subtitle: u['email'] as String,
-          trailing: GestureDetector(
-            onTap: () => _toggleFollow(u['user_id'] as int, isFollowing),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: isFollowing ? const Color(0xFFE5E7EB) : _accent,
+        return _userTile(u['name']?.toString() ?? 'Unknown', (u['user_id'] ?? 0) as int,
+          subtitle: u['email']?.toString() ?? '',
+          trailing: isFollowing
+              ? const Chip(label: Text('Friends', style: TextStyle(fontSize: 11)), backgroundColor: Color(0xFFDCFCE7))
+              : GestureDetector(
+                  onTap: () => _sendFriendRequest((u['user_id'] ?? 0) as int),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: _accent),
+                    child: const Text('Add Friend', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                  ),
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _requestsTab() {
+    if (_incomingRequests.isEmpty) return _emptyState('No pending friend requests', Icons.person_add_disabled);
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      itemCount: _incomingRequests.length,
+      itemBuilder: (ctx, i) {
+        final r = _incomingRequests[i];
+        final name = r['from_name'] as String;
+        final requestId = r['request_id'] as int;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE5E7EB))),
+          child: Row(
+            children: [
+              CircleAvatar(radius: 20, backgroundColor: _accent.withOpacity(0.12),
+                  child: Text(name[0].toUpperCase(), style: TextStyle(fontWeight: FontWeight.bold, color: _accent))),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                Text('Wants to be your friend', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              ])),
+              TextButton(onPressed: () => _rejectRequest(requestId),
+                  child: const Text('Decline', style: TextStyle(color: Color(0xFFEF4444), fontSize: 13))),
+              const SizedBox(width: 4),
+              ElevatedButton(
+                onPressed: () => _acceptRequest(requestId),
+                style: ElevatedButton.styleFrom(backgroundColor: _accent, foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+                child: const Text('Accept', style: TextStyle(fontSize: 13)),
               ),
-              child: Text(isFollowing ? 'Following' : 'Follow',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                      color: isFollowing ? const Color(0xFF374151) : Colors.white)),
-            ),
+            ],
           ),
         );
       },
