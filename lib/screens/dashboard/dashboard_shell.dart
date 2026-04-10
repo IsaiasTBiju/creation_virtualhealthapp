@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -39,17 +40,42 @@ class DashboardShell extends StatefulWidget {
 class _DashboardShellState extends State<DashboardShell> {
   int selectedIndex = 0;
 
+  int _lastMessageCount = 0;
+  int _unreadMessageCount = 0;
+  Timer? _msgPollTimer;
+
   @override
   void initState() {
     super.initState();
     widget.appPrefs.addListener(_onAppPrefsChanged);
     _loadFromBackend();
+    _checkForNewMessages();
+    // poll for new messages every 5 seconds
+    _msgPollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _checkForNewMessages());
   }
 
   @override
   void dispose() {
     widget.appPrefs.removeListener(_onAppPrefsChanged);
+    _msgPollTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _checkForNewMessages() async {
+    try {
+      final token = await AppSession.getToken();
+      if (token == null) return;
+      final data = await ApiService.getMap(token, 'messages/unread-count');
+      final count = data?['unread_count'] ?? 0;
+      if (mounted && count != _unreadMessageCount) {
+        setState(() {
+          _unreadMessageCount = count;
+          _hasNewMessage = count > 0;
+        });
+      }
+    } catch (e) {
+      // silently fail
+    }
   }
 
   void _onAppPrefsChanged() {
@@ -75,6 +101,8 @@ class _DashboardShellState extends State<DashboardShell> {
 
   // track badge count to detect new badges
   int _lastBadgeCount = 0;
+  bool _hasNewMessage = false;
+  bool _hasNewBadge = false;
 
   // check if user earned a new badge after an action
   Future<void> _checkForNewBadges() async {
@@ -86,6 +114,7 @@ class _DashboardShellState extends State<DashboardShell> {
         final newest = badges.last;
         final badgeName = newest['badge_name']?.toString() ?? 'Badge';
         if (mounted) {
+          setState(() => _hasNewBadge = true);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
@@ -272,7 +301,8 @@ class _DashboardShellState extends State<DashboardShell> {
 
   Future<void> _logWellness(WellnessDay day) async {
     setState(() {
-      wellnessDays[wellnessDays.length - 1] = day;
+      // add as new entry so the trend chart updates
+      wellnessDays.add(day);
     });
     final token = await AppSession.getToken();
     if (token == null) return;
@@ -280,6 +310,7 @@ class _DashboardShellState extends State<DashboardShell> {
       'log_type': 'mood',
       'value': day.energy.toDouble(),
       'mood_rating': day.energy,
+      'stress_level': day.stress,
       'notes': day.mood,
     });
     _checkForNewBadges();
@@ -530,9 +561,9 @@ class _DashboardShellState extends State<DashboardShell> {
                         const SizedBox(height: 8),
                         _navLabel('Social'),
                         _navItem(Icons.smart_toy_rounded, "AI Companion", 7, palette),
-                        _navItem(Icons.chat_bubble_rounded, "Messages", 8, palette),
+                        _navItem(Icons.chat_bubble_rounded, "Messages", 8, palette, badgeCount: _unreadMessageCount),
                         _navItem(Icons.people_rounded, "Social Hub", 9, palette),
-                        _navItem(Icons.emoji_events_rounded, "Achievements", 10, palette),
+                        _navItem(Icons.emoji_events_rounded, "Achievements", 10, palette, showBadge: _hasNewBadge),
                         const SizedBox(height: 8),
                         _navLabel('Personal'),
                         _navItem(Icons.book_rounded, "Journal", 11, palette),
@@ -600,13 +631,18 @@ class _DashboardShellState extends State<DashboardShell> {
     );
   }
 
-  Widget _navItem(IconData icon, String label, int index, CreationPalette palette) {
+  Widget _navItem(IconData icon, String label, int index, CreationPalette palette, {bool showBadge = false, int badgeCount = 0}) {
     final isSelected = selectedIndex == index;
     final accent = palette.colorBlind ? CreationPalette.cbBlue : const Color(0xFFA78BFA);
+    final hasBadge = showBadge || badgeCount > 0;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
       child: InkWell(
-        onTap: () => setState(() => selectedIndex = index),
+        onTap: () => setState(() {
+          selectedIndex = index;
+          if (index == 8) { _hasNewMessage = false; _unreadMessageCount = 0; }
+          if (index == 10) _hasNewBadge = false;
+        }),
         borderRadius: BorderRadius.circular(10),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
@@ -617,7 +653,30 @@ class _DashboardShellState extends State<DashboardShell> {
           ),
           child: Row(
             children: [
-              Icon(icon, color: isSelected ? accent : Colors.white38, size: 20),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(icon, color: isSelected ? accent : Colors.white38, size: 20),
+                  if (hasBadge)
+                    Positioned(
+                      top: -6, right: -10,
+                      child: Container(
+                        padding: badgeCount > 0
+                            ? const EdgeInsets.symmetric(horizontal: 5, vertical: 1)
+                            : const EdgeInsets.all(0),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: badgeCount > 0
+                            ? Center(child: Text('$badgeCount',
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)))
+                            : null,
+                      ),
+                    ),
+                ],
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(

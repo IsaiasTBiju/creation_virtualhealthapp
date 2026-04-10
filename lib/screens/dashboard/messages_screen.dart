@@ -32,12 +32,19 @@ class _MessagesScreenState extends State<MessagesScreen> with SingleTickerProvid
   String _myName = 'Me';
   String _myEmail = '';
   int _activeCount = 0;
+  bool _socketConnected = false;
+
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
     _loadIdentity();
+    // refresh friends/conversations every 8 seconds
+    _refreshTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (_dmUserId == null) _loadFriends(); // only refresh list view, not during a conversation
+    });
   }
 
   Future<void> _loadIdentity() async {
@@ -89,6 +96,8 @@ class _MessagesScreenState extends State<MessagesScreen> with SingleTickerProvid
     setState(() { _dmUserId = userId; _dmUserName = name; _loadingDm = true; _dmMessages = []; });
     final token = await AppSession.getToken();
     if (token == null) return;
+    // mark messages from this user as read
+    await ApiService.putData(token, 'messages/read/$userId');
     final data = await ApiService.getList(token, 'messages?with_user=$userId');
     if (mounted) setState(() { _dmMessages = data.map((m) => m as Map<String, dynamic>).toList(); _loadingDm = false; });
   }
@@ -107,11 +116,18 @@ class _MessagesScreenState extends State<MessagesScreen> with SingleTickerProvid
 
   // community chat socket
   void _initSocket() {
-    socket = io.io('http://localhost:3001', <String, dynamic>{'transports': ['websocket'], 'autoConnect': false});
+    socket = io.io('http://localhost:3001', io.OptionBuilder()
+        .setTransports(['websocket', 'polling'])
+        .disableAutoConnect()
+        .build());
     socket.connect();
     socket.onConnect((_) {
+      if (mounted) setState(() => _socketConnected = true);
       socket.emit('register_user', {'userId': _myEmail.isNotEmpty ? _myEmail : _myName, 'displayName': _myName});
     });
+    socket.onConnectError((err) { if (mounted) setState(() => _socketConnected = false); });
+    socket.onDisconnect((_) { if (mounted) setState(() => _socketConnected = false); });
+    socket.onError((err) => print('Socket error: $err'));
     socket.on('receive_message', (data) {
       if (!mounted) return;
       setState(() => _communityMessages.add({
@@ -124,7 +140,7 @@ class _MessagesScreenState extends State<MessagesScreen> with SingleTickerProvid
       _scrollCommunity();
     });
     socket.on('user_list', (data) {
-      if (mounted) setState(() => _activeCount = data['count'] ?? 0);
+      if (mounted) setState(() => _activeCount = (data is Map) ? (data['count'] ?? 0) : 0);
     });
   }
 
@@ -150,6 +166,7 @@ class _MessagesScreenState extends State<MessagesScreen> with SingleTickerProvid
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _tabs.dispose();
     socket.dispose();
     _dmController.dispose();
@@ -177,8 +194,13 @@ class _MessagesScreenState extends State<MessagesScreen> with SingleTickerProvid
                 const Expanded(child: Text('Messages', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                  child: Text('$_activeCount online', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF10B981))),
+                  decoration: BoxDecoration(
+                    color: _socketConnected ? const Color(0xFF10B981).withOpacity(0.1) : const Color(0xFFEF4444).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20)),
+                  child: Text(
+                    _socketConnected ? '$_activeCount online' : 'Disconnected',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                        color: _socketConnected ? const Color(0xFF10B981) : const Color(0xFFEF4444))),
                 ),
               ],
             ),

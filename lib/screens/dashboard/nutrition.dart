@@ -70,6 +70,17 @@ class _NutritionScreenState extends State<NutritionScreen> {
   }
 
   @override
+  void didUpdateWidget(covariant NutritionScreen old) {
+    super.didUpdateWidget(old);
+    if (old.dailyCalorieGoal != widget.dailyCalorieGoal) {
+      calorieGoalController.text = widget.dailyCalorieGoal.toString();
+    }
+    if (old.dailyWaterGoal != widget.dailyWaterGoal) {
+      waterGoalController.text = widget.dailyWaterGoal.toString();
+    }
+  }
+
+  @override
   void dispose() {
     calorieGoalController.dispose();
     waterGoalController.dispose();

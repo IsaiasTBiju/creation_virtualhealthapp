@@ -1274,3 +1274,31 @@ def get_conversations(
             "last_message_at": str(last_msg.sent_at) if last_msg else None,
         })
     return sorted(result, key=lambda x: x['last_message_at'] or '', reverse=True)
+
+
+# count unread messages for current user
+@app.get("/messages/unread-count")
+def get_unread_count(
+    current_user: sql_tables.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    count = db.query(sql_tables.Message).filter(
+        sql_tables.Message.receiver_id == current_user.user_id,
+        sql_tables.Message.is_read == False
+    ).count()
+    return {"unread_count": count}
+
+# mark all messages from a user as read
+@app.put("/messages/read/{sender_id}")
+def mark_messages_read(
+    sender_id: int,
+    current_user: sql_tables.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db.query(sql_tables.Message).filter(
+        sql_tables.Message.sender_id == sender_id,
+        sql_tables.Message.receiver_id == current_user.user_id,
+        sql_tables.Message.is_read == False
+    ).update({"is_read": True})
+    db.commit()
+    return {"detail": "Messages marked as read"}

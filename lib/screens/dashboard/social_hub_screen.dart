@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../creation_palette.dart';
@@ -22,15 +23,19 @@ class _SocialHubScreenState extends State<SocialHubScreen> with SingleTickerProv
   List<Map<String, dynamic>> _incomingRequests = [];
   bool _loading = true;
 
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 5, vsync: this);
     _loadAll();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) => _loadAll());
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _tabs.dispose();
     super.dispose();
   }
